@@ -13,9 +13,6 @@ const NUM_SCORABLE_TRIALS = 20;
 const TOTAL_TRIALS_IN_SEQUENCE = NUM_SCORABLE_TRIALS + FILLERS;
 const TRIAL_MS = 3000; // 3 s per stimulus
 
-// Simplified mapping for announcer text; ideally, this would be imported or shared
-// Grid component has its own 'mapping' array, but it's not exported.
-// For robust announcements, this mapping should be consistent.
 const positionLabels = [
   "Top-Left", "Top-Middle", "Top-Right",
   "Middle-Right", "Bottom-Right", "Bottom-Middle",
@@ -23,12 +20,14 @@ const positionLabels = [
 ];
 
 export default function App() {
-  const [gameState, setGameState] = useState('intro'); // intro | playing | break | complete
+  const [gameState, setGameState] = useState('intro');
   const [sequence, setSequence] = useState([]);
-  const [currentSequenceIndex, setCurrentSequenceIndex] = useState(0); // Index in the sequence array
+  const [currentSequenceIndex, setCurrentSequenceIndex] = useState(0);
   const [responses, setResponses] = useState(new Map());
   const timer = useRef(null);
   const unlocked = useRef(false);
+  const [showCorrectFlash, setShowCorrectFlash] = useState(false); // For correct response flash
+  const flashTimeoutRef = useRef(null); // Ref for the flash timeout
 
   const updateAnnouncer = (id, text) => {
     const el = document.getElementById(id);
@@ -37,16 +36,24 @@ export default function App() {
     }
   };
 
-  // Preload audio once
+  // Main useEffect cleanup
   useEffect(() => {
+    // This effect is primarily for preloading and global key listeners
     preloadAudio();
     const keyHandler = (e) => {
       if (e.code === 'KeyF') handleResponse('vis');
       if (e.code === 'KeyL') handleResponse('aud');
     };
     window.addEventListener('keydown', keyHandler);
-    return () => window.removeEventListener('keydown', keyHandler);
-  }, []);
+
+    // Cleanup function for this effect
+    return () => {
+      window.removeEventListener('keydown', keyHandler);
+      // Clear any pending timeouts when App unmounts or before this effect re-runs (though it has empty deps)
+      if (timer.current) clearTimeout(timer.current); // Already present for game timer
+      if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current); // Cleanup for flash
+    };
+  }, []); // Empty dependency array means this runs once on mount
 
   const unlockAudio = () => {
     if (unlocked.current) return;
@@ -63,6 +70,8 @@ export default function App() {
     setCurrentSequenceIndex(0);
     setGameState('playing');
     updateAnnouncer('game-state-announcer', 'Game started.');
+    setShowCorrectFlash(false); // Ensure flash is off at game start
+    if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current); // Clear any lingering flash
   };
 
   // Game state and current trial progression effect
@@ -72,40 +81,74 @@ export default function App() {
         setGameState('break');
         updateAnnouncer('game-state-announcer', 'Round complete. Press Continue.');
         updateAnnouncer('active-cell-announcer', '');
-        return;
+        return; // Return here to prevent setting new timer
       }
 
       const currentTrialData = sequence[currentSequenceIndex];
       if (currentTrialData) {
         playLetter(currentTrialData.letter);
         const isFiller = currentSequenceIndex < FILLERS;
-        if (!isFiller) { // Announce for scorable trials
-          const posLabel = positionLabels[currentTrialData.position] || `Position ${currentTrialData.position + 1}`; // +1 for 1-indexed speech
+        if (!isFiller) {
+          const posLabel = positionLabels[currentTrialData.position] || `Position ${currentTrialData.position + 1}`;
           updateAnnouncer('active-cell-announcer', `Cell ${posLabel}. Letter ${currentTrialData.letter}.`);
-        } else { // Optional: Announce fillers differently or keep quiet
+        } else {
           updateAnnouncer('active-cell-announcer', `Get ready. Letter ${currentTrialData.letter}.`);
         }
       } else {
         updateAnnouncer('active-cell-announcer', '');
       }
 
+      // Clear previous timer before setting a new one
+      if (timer.current) clearTimeout(timer.current);
       timer.current = setTimeout(() => {
         setCurrentSequenceIndex(c => c + 1);
       }, TRIAL_MS);
 
-      return () => clearTimeout(timer.current);
-    } else {
+      // No return () => clearTimeout(timer.current) here, moved to main useEffect cleanup or handle in else block
+    } else { // Not 'playing' state
       updateAnnouncer('active-cell-announcer', '');
       if (gameState === 'intro') {
         updateAnnouncer('game-state-announcer', 'Welcome to Dual N-Back. Press Start Game.');
       }
+      // Ensure timer is cleared if game stops for any reason other than natural end
+      if (timer.current) clearTimeout(timer.current);
+      if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current); // Clear flash if game stops
+      setShowCorrectFlash(false);
+    }
+    // This effect's cleanup should handle the timer if the dependencies change mid-flight
+    // However, the main App unmount cleanup for timer.current is in the first useEffect.
+    // For robustness, let's ensure this specific timer is cleared if dependencies change while it's active.
+    return () => {
+        if (timer.current) clearTimeout(timer.current);
     }
   }, [gameState, currentSequenceIndex, sequence]);
 
   const handleResponse = useCallback(
     (type) => {
-      // Only allow responses during scorable part of playing state
-      if (gameState !== 'playing' || currentSequenceIndex < FILLERS) return;
+      if (gameState !== 'playing' || currentSequenceIndex < FILLERS || !sequence[currentSequenceIndex] || !sequence[currentSequenceIndex - N]) return;
+
+      const currentTrial = sequence[currentSequenceIndex];
+      const nBackTrial = sequence[currentSequenceIndex - N];
+      let isCorrect = false;
+
+      if (type === 'vis') {
+        if (currentTrial.position === nBackTrial.position) {
+          isCorrect = true;
+        }
+      } else if (type === 'aud') {
+        if (currentTrial.letter === nBackTrial.letter) {
+          isCorrect = true;
+        }
+      }
+
+      if (isCorrect) {
+        setShowCorrectFlash(true);
+        if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
+        flashTimeoutRef.current = setTimeout(() => {
+          setShowCorrectFlash(false);
+        }, 150); // Flash duration
+      }
+
       setResponses((prev) => {
         const r = { ...(prev.get(currentSequenceIndex) || { vis: false, aud: false }) };
         if (type === 'vis') r.vis = true;
@@ -113,7 +156,7 @@ export default function App() {
         return new Map(prev).set(currentSequenceIndex, r);
       });
     },
-    [gameState, currentSequenceIndex]
+    [gameState, currentSequenceIndex, sequence]
   );
 
   const handleContinueFromBreak = () => {
@@ -123,7 +166,6 @@ export default function App() {
 
   const handlePlayAgain = () => {
     setGameState('intro');
-    // gameState announcer will be updated by the main useEffect for 'intro' state
   };
 
   const results = gameState === 'complete' ? evaluateResponses({ trials: sequence, responses, n: N }) : null;
@@ -145,7 +187,10 @@ export default function App() {
 
       {gameState === 'playing' && sequence[currentSequenceIndex] && (
         <>
-          <Grid active={sequence[currentSequenceIndex].position} />
+          <Grid
+            active={sequence[currentSequenceIndex].position}
+            showCorrectFlash={showCorrectFlash}
+          />
           <ControlButtons
             onVis={() => handleResponse('vis')}
             onAud={() => handleResponse('aud')}

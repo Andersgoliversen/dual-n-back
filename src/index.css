@@ -13,3 +13,8 @@
   white-space: nowrap;
   border-width: 0;
 }
+
+.flash-correct {
+  background-color: #9AE6B4; /* A light green, adjust as needed */
+  /* Add transition if desired, but for a quick flash, direct change is often fine */
+}

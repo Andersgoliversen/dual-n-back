@@ -12,11 +12,13 @@ const mapping = [
   { r: 2, c: 1 }, // 7 middle‑left
 ];
 
-export default function Grid({ active }) {
+export default function Grid({ active, showCorrectFlash }) { // Added showCorrectFlash to props
   // active is index 0‑7 or null
   return (
     <div
-      className="grid grid-cols-3 grid-rows-3 gap-1 w-56 h-56 select-none"
+      className={`grid grid-cols-3 grid-rows-3 gap-1 w-56 h-56 select-none ${
+        showCorrectFlash ? 'flash-correct' : '' // Conditionally apply flash class
+      }`}
       role="grid"
       aria-label="Dual N‑Back visual grid"
       aria-describedby="trial-counter-description"
@@ -45,8 +47,10 @@ export default function Grid({ active }) {
 
 Grid.propTypes = {
   active: PropTypes.number, // Can be null, so not isRequired
+  showCorrectFlash: PropTypes.bool, // Added prop type for showCorrectFlash
 };
 
 Grid.defaultProps = {
   active: null,
+  showCorrectFlash: false, // Default value for showCorrectFlash
 };
