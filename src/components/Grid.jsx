@@ -1,4 +1,5 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 
 const mapping = [
   { r: 1, c: 1 }, // 0 top‑left
@@ -18,6 +19,7 @@ export default function Grid({ active }) {
       className="grid grid-cols-3 grid-rows-3 gap-1 w-56 h-56 select-none"
       role="grid"
       aria-label="Dual N‑Back visual grid"
+      aria-describedby="trial-counter-description"
     >
       {Array.from({ length: 9 }, (_, i) => {
         if (i === 4) return <div key={i} className="" />; // centre empty
@@ -38,4 +40,13 @@ export default function Grid({ active }) {
         );
       })}
     </div>
-  
+  );
+}
+
+Grid.propTypes = {
+  active: PropTypes.number, // Can be null, so not isRequired
+};
+
+Grid.defaultProps = {
+  active: null,
+};

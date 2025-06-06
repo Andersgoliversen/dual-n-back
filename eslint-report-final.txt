@@ -1,0 +1,9 @@
+
+> dual-n-back@0.0.0 lint
+> eslint . --ext js,jsx
+
+
+/app/src/App.jsx
+  32:6  warning  React Hook useEffect has a missing dependency: 'handleResponse'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+✖ 1 problem (0 errors, 1 warning)

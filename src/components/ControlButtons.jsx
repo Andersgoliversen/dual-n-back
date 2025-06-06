@@ -1,4 +1,5 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 
 export default function ControlButtons({ onVis, onAud, disabled }) {
   return (
@@ -22,3 +23,13 @@ export default function ControlButtons({ onVis, onAud, disabled }) {
     </div>
   );
 }
+
+ControlButtons.propTypes = {
+  onVis: PropTypes.func.isRequired,
+  onAud: PropTypes.func.isRequired,
+  disabled: PropTypes.bool,
+};
+
+ControlButtons.defaultProps = {
+  disabled: false,
+};
