@@ -9,19 +9,29 @@ export function evaluateResponses({ trials, responses, n }) {
     dualTotal = 0;
 
   trials.forEach((t, i) => {
-    if (i < n) return; // non‑scorable
+    if (i < n) return; // non-scorable
 
-    const isVisMatch = t.position === trials[i - n].position;
-    const isAudMatch = t.letter === trials[i - n].letter;
+    const isVisMatchTarget = t.position === trials[i - n].position;
+    const isAudMatchTarget = t.letter === trials[i - n].letter;
+    const userResponse = responses.get(i) || { vis: false, aud: false };
 
-    if (isVisMatch && isAudMatch) dualTotal++;
-    else if (isVisMatch) visualTotal++;
-    else if (isAudMatch) audioTotal++;
-
-    const r = responses.get(i) || { vis: false, aud: false };
-    if (isVisMatch && r.vis) visualHits++;
-    if (isAudMatch && r.aud) audioHits++;
-    if (isVisMatch && isAudMatch && r.vis && r.aud) dualHits++; // counted separately
+    if (isVisMatchTarget && isAudMatchTarget) {
+        dualTotal++;
+        if (userResponse.vis && userResponse.aud) {
+            dualHits++;
+        }
+    } else if (isVisMatchTarget) { // Visual-only match
+        visualTotal++;
+        if (userResponse.vis) {
+            visualHits++;
+        }
+    } else if (isAudMatchTarget) { // Auditory-only match
+        audioTotal++;
+        if (userResponse.aud) {
+            audioHits++;
+        }
+    }
+    // No need to handle 'no match' cases for totals or hits in this part
   });
 
   const pct = (hits, tot) =>

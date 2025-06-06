@@ -87,13 +87,10 @@ export default function App() {
       const currentTrialData = sequence[currentSequenceIndex];
       if (currentTrialData) {
         playLetter(currentTrialData.letter);
-        const isFiller = currentSequenceIndex < FILLERS;
-        if (!isFiller) {
-          const posLabel = positionLabels[currentTrialData.position] || `Position ${currentTrialData.position + 1}`;
-          updateAnnouncer('active-cell-announcer', `Cell ${posLabel}. Letter ${currentTrialData.letter}.`);
-        } else {
-          updateAnnouncer('active-cell-announcer', `Get ready. Letter ${currentTrialData.letter}.`);
-        }
+        // const isFiller = currentSequenceIndex < FILLERS; // This variable is no longer strictly needed for the announcer text
+        const posLabel = positionLabels[currentTrialData.position] || `Position ${currentTrialData.position + 1}`;
+        // Always announce position and letter for active trials
+        updateAnnouncer('active-cell-announcer', `Cell ${posLabel}. Letter ${currentTrialData.letter}.`);
       } else {
         updateAnnouncer('active-cell-announcer', '');
       }

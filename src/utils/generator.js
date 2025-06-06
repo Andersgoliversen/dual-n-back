@@ -68,8 +68,8 @@ export function generateSequence({ n: N_LEVEL = 2 } = {}) {
   const NUM_SCORABLE_TRIALS = 20;
   const TOTAL_TRIALS = NUM_SCORABLE_TRIALS + N_LEVEL;
   const TARGET_DUAL = 2;
-  const TARGET_VISUAL_ONLY = 2;
-  const TARGET_AUDITORY_ONLY = 2;
+  const TARGET_VISUAL_ONLY = 4;
+  const TARGET_AUDITORY_ONLY = 4;
 
   const sequence = new Array(TOTAL_TRIALS);
 
