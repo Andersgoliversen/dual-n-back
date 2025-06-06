@@ -24,7 +24,8 @@ export function evaluateResponses({ trials, responses, n }) {
     if (isVisMatch && isAudMatch && r.vis && r.aud) dualHits++; // counted separately
   });
 
-  const pct = (hits, tot) => (tot ? ((hits / tot) * 100).toFixed(1) : '—');
+  const pct = (hits, tot) =>
+    tot ? Number(((hits / tot) * 100).toFixed(1)) : '—';
   return {
     visual: { hits: visualHits, total: visualTotal, pct: pct(visualHits, visualTotal) },
     auditory: { hits: audioHits, total: audioTotal, pct: pct(audioHits, audioTotal) },
