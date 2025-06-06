@@ -73,49 +73,53 @@ export function generateSequence({ n: N_LEVEL = 2 } = {}) {
 
   const sequence = new Array(TOTAL_TRIALS);
 
-  // Fillers
+  // Fill initial non-scorable trials
   for (let i = 0; i < N_LEVEL; i++) {
-    sequence[i] = { index: i, position: getRandomPosition(), letter: getRandomLetter() };
+    sequence[i] = {
+      index: i,
+      position: getRandomPosition(),
+      letter: getRandomLetter(),
+    };
   }
 
-  // Scorable Trials - Initial Random Assignment (values will be overwritten deterministically)
+  // Prepare the ordered list of match types for scorable trials
+  const types = [
+    ...Array(TARGET_DUAL).fill('dual'),
+    ...Array(TARGET_VISUAL_ONLY).fill('visual'),
+    ...Array(TARGET_AUDITORY_ONLY).fill('auditory'),
+    ...Array(
+      NUM_SCORABLE_TRIALS - TARGET_DUAL - TARGET_VISUAL_ONLY - TARGET_AUDITORY_ONLY,
+    ).fill('none'),
+  ];
+  shuffle(types);
+
   for (let i = N_LEVEL; i < TOTAL_TRIALS; i++) {
-    // Values from sequence[i - N_LEVEL] are fixed at this point (either fillers or earlier scorable trials)
-    // This random assignment is temporary; these trials will be set explicitly.
-    sequence[i] = { index: i, position: getRandomPosition(), letter: getRandomLetter() };
+    const prev = sequence[i - N_LEVEL];
+    const type = types[i - N_LEVEL];
+
+    let position;
+    let letter;
+
+    switch (type) {
+      case 'dual':
+        position = prev.position;
+        letter = prev.letter;
+        break;
+      case 'visual':
+        position = prev.position;
+        letter = getRandomLetter(prev.letter);
+        break;
+      case 'auditory':
+        position = getRandomPosition(prev.position);
+        letter = prev.letter;
+        break;
+      default:
+        position = getRandomPosition(prev.position);
+        letter = getRandomLetter(prev.letter);
+    }
+
+    sequence[i] = { index: i, position, letter };
   }
-
-  let scorableIndices = Array.from({ length: NUM_SCORABLE_TRIALS }, (_, k) => k + N_LEVEL);
-  shuffle(scorableIndices);
-
-  const dualIndices = scorableIndices.splice(0, TARGET_DUAL);
-  const visualOnlyIndices = scorableIndices.splice(0, TARGET_VISUAL_ONLY);
-  const auditoryOnlyIndices = scorableIndices.splice(0, TARGET_AUDITORY_ONLY);
-  const noMatchIndices = scorableIndices; // Remaining indices
-
-  // Set Dual Matches
-  dualIndices.forEach(idx => {
-    sequence[idx].position = sequence[idx - N_LEVEL].position;
-    sequence[idx].letter = sequence[idx - N_LEVEL].letter;
-  });
-
-  // Set Visual-Only Matches
-  visualOnlyIndices.forEach(idx => {
-    sequence[idx].position = sequence[idx - N_LEVEL].position;
-    sequence[idx].letter = getRandomLetter(sequence[idx - N_LEVEL].letter); // Ensure different letter
-  });
-
-  // Set Auditory-Only Matches
-  auditoryOnlyIndices.forEach(idx => {
-    sequence[idx].letter = sequence[idx - N_LEVEL].letter;
-    sequence[idx].position = getRandomPosition(sequence[idx - N_LEVEL].position); // Ensure different position
-  });
-
-  // Set No-Matches
-  noMatchIndices.forEach(idx => {
-    sequence[idx].position = getRandomPosition(sequence[idx - N_LEVEL].position); // Ensure different position
-    sequence[idx].letter = getRandomLetter(sequence[idx - N_LEVEL].letter);     // Ensure different letter
-  });
 
   return sequence;
 }
