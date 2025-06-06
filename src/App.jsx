@@ -28,6 +28,10 @@ export default function App() {
   const unlocked = useRef(false);
   const [showCorrectFlash, setShowCorrectFlash] = useState(false); // For correct response flash
   const flashTimeoutRef = useRef(null); // Ref for the flash timeout
+  const [incorrectVisPress, setIncorrectVisPress] = useState(false);
+  const [incorrectAudPress, setIncorrectAudPress] = useState(false);
+  const [showIncorrectFlashAnimation, setShowIncorrectFlashAnimation] = useState(false);
+  const incorrectFlashTimeoutRef = useRef(null);
 
   const updateAnnouncer = (id, text) => {
     const el = document.getElementById(id);
@@ -52,6 +56,7 @@ export default function App() {
       // Clear any pending timeouts when App unmounts or before this effect re-runs (though it has empty deps)
       if (timer.current) clearTimeout(timer.current); // Already present for game timer
       if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current); // Cleanup for flash
+      if (incorrectFlashTimeoutRef.current) clearTimeout(incorrectFlashTimeoutRef.current); // Cleanup for incorrect flash
     };
   }, []); // Empty dependency array means this runs once on mount
 
@@ -77,6 +82,11 @@ export default function App() {
   // Game state and current trial progression effect
   useEffect(() => {
     if (gameState === 'playing') {
+      setIncorrectVisPress(false);
+      setIncorrectAudPress(false);
+      setShowIncorrectFlashAnimation(false); // Reset incorrect flash
+      if (incorrectFlashTimeoutRef.current) clearTimeout(incorrectFlashTimeoutRef.current); // Clear pending incorrect flash timeout
+
       if (currentSequenceIndex >= TOTAL_TRIALS_IN_SEQUENCE) {
         setGameState('break');
         updateAnnouncer('game-state-announcer', 'Round complete. Press Continue.');
@@ -111,6 +121,8 @@ export default function App() {
       if (timer.current) clearTimeout(timer.current);
       if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current); // Clear flash if game stops
       setShowCorrectFlash(false);
+      setShowIncorrectFlashAnimation(false); // Reset incorrect flash also when not playing
+      if (incorrectFlashTimeoutRef.current) clearTimeout(incorrectFlashTimeoutRef.current); // Clear pending incorrect flash timeout
     }
     // This effect's cleanup should handle the timer if the dependencies change mid-flight
     // However, the main App unmount cleanup for timer.current is in the first useEffect.
@@ -144,6 +156,19 @@ export default function App() {
         flashTimeoutRef.current = setTimeout(() => {
           setShowCorrectFlash(false);
         }, 150); // Flash duration
+      } else {
+        // If the response was not correct, set the appropriate incorrect press state
+        if (type === 'vis') {
+          setIncorrectVisPress(true);
+        } else if (type === 'aud') {
+          setIncorrectAudPress(true);
+        }
+        // Trigger incorrect flash animation
+        setShowIncorrectFlashAnimation(true);
+        if (incorrectFlashTimeoutRef.current) clearTimeout(incorrectFlashTimeoutRef.current);
+        incorrectFlashTimeoutRef.current = setTimeout(() => {
+          setShowIncorrectFlashAnimation(false);
+        }, 300); // Flash duration for incorrect press
       }
 
       setResponses((prev) => {
@@ -176,6 +201,13 @@ export default function App() {
       {gameState === 'intro' && (
         <>
           <h1 className="text-2xl mb-4">Dual N-Back</h1>
+          <p className="mb-4 text-center" style={{ maxWidth: '400px' }}>
+            The goal is to match the visual position and the auditory letter from {N} trials ago.
+            <br />
+            Press 'F' if the current position matches the position from {N} trials back.
+            <br />
+            Press 'L' if the current letter matches the letter from {N} trials back.
+          </p>
           <button className="px-6 py-3 rounded-lg border shadow" onClick={startGame}>
             Start Game
           </button>
@@ -187,6 +219,7 @@ export default function App() {
           <Grid
             active={sequence[currentSequenceIndex].position}
             showCorrectFlash={showCorrectFlash}
+            showIncorrectFlash={showIncorrectFlashAnimation}
           />
           <ControlButtons
             onVis={() => handleResponse('vis')}
