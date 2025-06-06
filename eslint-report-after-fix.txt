@@ -1,0 +1,31 @@
+
+> dual-n-back@0.0.0 lint
+> eslint . --ext js,jsx
+
+
+/app/src/App.jsx
+   31:6   warning  React Hook useEffect has a missing dependency: 'handleResponse'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+   89:45  error    Irregular whitespace not allowed                                                                                   no-irregular-whitespace
+  136:22  error    'label' is missing in props validation                                                                             react/prop-types
+  136:29  error    'data' is missing in props validation                                                                              react/prop-types
+  139:22  error    'data.hits' is missing in props validation                                                                         react/prop-types
+  139:34  error    'data.total' is missing in props validation                                                                        react/prop-types
+  139:48  error    'data.pct' is missing in props validation                                                                          react/prop-types
+
+/app/src/components/ControlButtons.jsx
+  3:42  error  'onVis' is missing in props validation     react/prop-types
+  3:49  error  'onAud' is missing in props validation     react/prop-types
+  3:56  error  'disabled' is missing in props validation  react/prop-types
+
+/app/src/components/Grid.jsx
+  14:32  error  'active' is missing in props validation  react/prop-types
+
+/app/src/components/StatusBar.jsx
+  3:37  error  'trial' is missing in props validation  react/prop-types
+  3:44  error  'total' is missing in props validation  react/prop-types
+
+/app/src/utils/audio.js
+  8:52  error  Irregular whitespace not allowed  no-irregular-whitespace
+  8:63  error  Irregular whitespace not allowed  no-irregular-whitespace
+
+✖ 15 problems (14 errors, 1 warning)

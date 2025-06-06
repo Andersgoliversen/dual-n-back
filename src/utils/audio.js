@@ -5,7 +5,7 @@ const audioMap = new Map();
 
 export function preloadAudio() {
   LETTERS.forEach((l) => {
-    const a = new Audio(`/sounds/${l}.mp3`); // −14 LUFS @44.1 kHz provided externally
+    const a = new Audio(`/sounds/${l}.mp3`); // -14 LUFS @44.1 kHz provided externally
     a.preload = 'auto';
     audioMap.set(l, a);
   });
