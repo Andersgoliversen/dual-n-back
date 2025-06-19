@@ -6,6 +6,7 @@ import StatusBar from './components/StatusBar.jsx';
 import { preloadAudio, playLetter } from './utils/audio.js';
 import { generateSequence } from './utils/generator.js';
 import { evaluateResponses } from './utils/evaluator.js';
+import Stats from './components/Stats.jsx';
 
 const N = 2;
 const FILLERS = N;
@@ -30,6 +31,13 @@ export default function App() {
   const flashTimeoutRef = useRef(null); // Ref for the flash timeout
   const [showIncorrectFlashAnimation, setShowIncorrectFlashAnimation] = useState(false);
   const incorrectFlashTimeoutRef = useRef(null);
+
+  // Initialize user profile
+  useEffect(() => {
+    if (!localStorage.getItem('dnb-user-id')) {
+      localStorage.setItem('dnb-user-id', crypto.randomUUID());
+    }
+  }, []);
 
   const updateAnnouncer = (id, text) => {
     const el = document.getElementById(id);
@@ -176,7 +184,19 @@ export default function App() {
     [gameState, currentSequenceIndex, sequence]
   );
 
+  const saveSession = (results) => {
+    const history = JSON.parse(localStorage.getItem('dnb-history') || '[]');
+    history.push({
+      date: new Date().toISOString(),
+      level: N,
+      accuracy: results.dual.pct,
+    });
+    localStorage.setItem('dnb-history', JSON.stringify(history));
+  };
+
   const handleContinueFromBreak = () => {
+    const r = evaluateResponses({ trials: sequence, responses, n: N });
+    saveSession(r);
     setGameState('complete');
     updateAnnouncer('game-state-announcer', 'Results displayed. Press Play Again to restart.');
   };
@@ -190,6 +210,9 @@ export default function App() {
 
   return (
     <main className="relative flex flex-col items-center justify-center min-h-screen p-4">
+      <div className="absolute top-4 left-4">
+        <button className="text-sm underline" onClick={() => setGameState('stats')}>Stats</button>
+      </div>
       <div className="absolute top-4 right-4 text-sm text-gray-600 font-medium">
         {N}-Back
       </div>
@@ -259,6 +282,8 @@ export default function App() {
           </button>
         </>
       )}
+
+      {gameState === 'stats' && <Stats onBack={() => setGameState('intro')} />}
     </main>
   );
 }
