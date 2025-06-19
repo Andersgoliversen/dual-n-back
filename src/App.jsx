@@ -48,6 +48,10 @@ export default function App() {
   // Map of user responses keyed by trial index
   const [responses, setResponses] = useState(new Map());
 
+  // Stores results from the most recently completed round so the
+  // next round's difficulty can be adjusted.
+  const [lastResults, setLastResults] = useState(null);
+
   // Various refs used for timers and unlocked audio context
   const timer = useRef(null);
   const unlocked = useRef(false);
@@ -116,6 +120,7 @@ export default function App() {
     const seq = generateSequence({ n: N });
     setSequence(seq);
     setResponses(new Map());
+    setLastResults(null); // Clear old results when a new round starts
     setCurrentSequenceIndex(0);
     setGameState('playing');
     updateAnnouncer('game-state-announcer', 'Game started.');
@@ -278,12 +283,29 @@ export default function App() {
   const handleContinueFromBreak = () => {
     const r = evaluateResponses({ trials: sequence, responses, n: N });
     saveSession(r);
+    setLastResults(r); // Store results for adaptive difficulty
     setGameState('complete');
     updateAnnouncer('game-state-announcer', 'Results displayed. Press Play Again to restart.');
   };
 
   // Reset the game back to the intro screen so another round can be started.
   const handlePlayAgain = () => {
+    // Adjust the N-back level for the next round based on the
+    // previous session's visual and auditory accuracy.
+    if (lastResults) {
+      let next = N;
+      if (lastResults.visual.pct > 90 && lastResults.auditory.pct > 90) {
+        next = N + 1;
+      } else if (
+        lastResults.visual.pct < 75 ||
+        lastResults.auditory.pct < 75
+      ) {
+        next = Math.max(1, N - 1);
+      }
+      if (next !== N) {
+        setSettings((s) => ({ ...s, n: next }));
+      }
+    }
     setGameState('intro');
   };
 
@@ -302,7 +324,11 @@ export default function App() {
 
   // Re-compute the aggregate results when the round is complete so that the
   // Results screen can display hits and accuracy numbers.
-  const results = gameState === 'complete' ? evaluateResponses({ trials: sequence, responses, n: N }) : null;
+  // Use stored results when available so changing the N-back level
+  // after a round doesn't alter the displayed statistics.
+  const results = gameState === 'complete'
+    ? lastResults || evaluateResponses({ trials: sequence, responses, n: N })
+    : null;
 
   // This value is used to drive the status bar.  It ignores the initial filler
   // trials so that "Trial 1" is the first scorable trial.
