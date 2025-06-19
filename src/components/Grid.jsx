@@ -16,7 +16,7 @@ export default function Grid({ active, showCorrectFlash, showIncorrectFlash }) {
   // active is index 0‑7 or null
   return (
     <div
-      className={`grid grid-cols-3 grid-rows-3 gap-1 w-56 h-56 select-none border border-gray-400 ${
+      className={`grid grid-cols-3 grid-rows-3 gap-1 w-56 h-56 sm:w-72 sm:h-72 lg:w-96 lg:h-96 select-none border border-gray-400 ${
         showCorrectFlash ? 'flash-correct' : ''
       } ${
         showIncorrectFlash ? 'flash-incorrect' : ''

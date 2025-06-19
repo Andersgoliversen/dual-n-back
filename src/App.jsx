@@ -198,7 +198,10 @@ export default function App() {
   const currentScorableTrialNum = Math.max(0, currentSequenceIndex - FILLERS + 1);
 
   return (
-    <main className="flex flex-col items-center justify-center min-h-screen p-4">
+    <main className="relative flex flex-col items-center justify-center min-h-screen p-4">
+      <div className="absolute top-4 right-4 text-sm text-gray-600 font-medium">
+        {N}-Back
+      </div>
       <div id="active-cell-announcer" className="visually-hidden" role="status" aria-live="polite"></div>
       <div id="game-state-announcer" className="visually-hidden" role="status" aria-live="assertive"></div>
 
