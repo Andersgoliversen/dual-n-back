@@ -9,7 +9,7 @@ function HitCounter() {
   useEffect(() => {
     const handler = (e) => {
       const key = e.key.toLowerCase();
-      if (key === 'f') setVis((v) => v + 1);
+      if (key === 'a') setVis((v) => v + 1);
       if (key === 'l') setAud((a) => a + 1);
     };
     document.addEventListener('keydown', handler);
@@ -23,10 +23,10 @@ function HitCounter() {
   );
 }
 
-test('F and L key presses increment counters', async () => {
+test('A and L key presses increment counters', async () => {
   const user = userEvent.setup();
   render(<HitCounter />);
-  await user.keyboard('f');
+  await user.keyboard('a');
   await user.keyboard('l');
   expect(screen.getByTestId('vis').textContent).toBe('1');
   expect(screen.getByTestId('aud').textContent).toBe('1');
