@@ -28,8 +28,6 @@ export default function App() {
   const unlocked = useRef(false);
   const [showCorrectFlash, setShowCorrectFlash] = useState(false); // For correct response flash
   const flashTimeoutRef = useRef(null); // Ref for the flash timeout
-  const [incorrectVisPress, setIncorrectVisPress] = useState(false);
-  const [incorrectAudPress, setIncorrectAudPress] = useState(false);
   const [showIncorrectFlashAnimation, setShowIncorrectFlashAnimation] = useState(false);
   const incorrectFlashTimeoutRef = useRef(null);
 
@@ -85,8 +83,6 @@ export default function App() {
   // Game state and current trial progression effect
   useEffect(() => {
     if (gameState === 'playing') {
-      setIncorrectVisPress(false);
-      setIncorrectAudPress(false);
       setShowIncorrectFlashAnimation(false); // Reset incorrect flash
       if (incorrectFlashTimeoutRef.current) clearTimeout(incorrectFlashTimeoutRef.current); // Clear pending incorrect flash timeout
 
@@ -162,11 +158,6 @@ export default function App() {
         }, 150); // Flash duration
       } else {
         // If the response was not correct, set the appropriate incorrect press state
-        if (type === 'vis') {
-          setIncorrectVisPress(true);
-        } else if (type === 'aud') {
-          setIncorrectAudPress(true);
-        }
         // Trigger incorrect flash animation
         setShowIncorrectFlashAnimation(true);
         if (incorrectFlashTimeoutRef.current) clearTimeout(incorrectFlashTimeoutRef.current);
