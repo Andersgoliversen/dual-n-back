@@ -16,10 +16,10 @@ export default function Grid({ active, showCorrectFlash, showIncorrectFlash }) {
   // active is index 0‑7 or null
   return (
     <div
-      className={`grid grid-cols-3 grid-rows-3 gap-1 w-56 h-56 select-none ${
+      className={`grid grid-cols-3 grid-rows-3 gap-1 w-56 h-56 select-none border border-gray-400 ${
         showCorrectFlash ? 'flash-correct' : ''
       } ${
-        showIncorrectFlash ? 'flash-incorrect' : '' // Conditionally apply incorrect flash class
+        showIncorrectFlash ? 'flash-incorrect' : ''
       }`}
       role="grid"
       aria-label="Dual N‑Back visual grid"
@@ -37,9 +37,9 @@ export default function Grid({ active, showCorrectFlash, showIncorrectFlash }) {
             role="gridcell"
             aria-label={`row ${r} column ${c}`}
             aria-selected={isActive}
-            className={`rounded-lg border h-full flex items-center justify-center transition-all duration-300 ${
+            className={`rounded-lg border aspect-square w-full h-full flex items-center justify-center transition-all duration-300 ${
               isActive ? 'bg-blue-400' : 'bg-gray-200'
-            }`}
+            } ${showCorrectFlash && isActive ? 'ring-4 ring-yellow-400' : ''}`}
           />
         );
       })}

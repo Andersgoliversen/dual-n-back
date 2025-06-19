@@ -7,13 +7,20 @@ export function preloadAudio() {
   LETTERS.forEach((l) => {
     const a = new Audio(`/sounds/${l}.mp3`); // -14 LUFS @44.1 kHz provided externally
     a.preload = 'auto';
+    a.addEventListener('error', () => {
+      console.warn(`Missing audio file: /sounds/${l}.mp3`);
+    });
     audioMap.set(l, a);
   });
 }
 
-export function playLetter(letter) {
+export async function playLetter(letter) {
   const clip = audioMap.get(letter);
   if (!clip) return;
   clip.currentTime = 0;
-  clip.play();
+  try {
+    await clip.play();
+  } catch {
+    // ignore play rejections
+  }
 }

@@ -45,14 +45,15 @@ export default function App() {
     // This effect is primarily for preloading and global key listeners
     preloadAudio();
     const keyHandler = (e) => {
-      if (e.code === 'KeyF') handleResponse('vis');
-      if (e.code === 'KeyL') handleResponse('aud');
+      const key = e.key.toLowerCase();
+      if (key === 'f') handleResponse('vis');
+      if (key === 'l') handleResponse('aud');
     };
-    window.addEventListener('keydown', keyHandler);
+    document.addEventListener('keydown', keyHandler);
 
     // Cleanup function for this effect
     return () => {
-      window.removeEventListener('keydown', keyHandler);
+      document.removeEventListener('keydown', keyHandler);
       // Clear any pending timeouts when App unmounts or before this effect re-runs (though it has empty deps)
       if (timer.current) clearTimeout(timer.current); // Already present for game timer
       if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current); // Cleanup for flash
@@ -64,6 +65,8 @@ export default function App() {
     if (unlocked.current) return;
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     ctx.resume();
+    const clip = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=');
+    clip.play().catch(() => {});
     unlocked.current = true;
   };
 
@@ -96,7 +99,8 @@ export default function App() {
 
       const currentTrialData = sequence[currentSequenceIndex];
       if (currentTrialData) {
-        playLetter(currentTrialData.letter);
+        document.body.focus();
+        (async () => { await playLetter(currentTrialData.letter); })();
         // const isFiller = currentSequenceIndex < FILLERS; // This variable is no longer strictly needed for the announcer text
         const posLabel = positionLabels[currentTrialData.position] || `Position ${currentTrialData.position + 1}`;
         // Always announce position and letter for active trials
@@ -224,7 +228,7 @@ export default function App() {
           <ControlButtons
             onVis={() => handleResponse('vis')}
             onAud={() => handleResponse('aud')}
-            disabled={currentSequenceIndex < FILLERS}
+            disabled={currentSequenceIndex < FILLERS || !timer.current}
           />
           <StatusBar
             trial={currentScorableTrialNum > NUM_SCORABLE_TRIALS ? NUM_SCORABLE_TRIALS : currentScorableTrialNum}
