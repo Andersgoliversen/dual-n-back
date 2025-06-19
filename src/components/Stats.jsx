@@ -80,7 +80,7 @@ export default function Stats({ onBack }) {
         <Line data={data} options={options} />
       )}
       <div className="mt-4 text-center">
-        <button className="px-4 py-2 rounded-lg border shadow" onClick={onBack}>
+        <button className="px-4 py-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600" onClick={onBack}>
           Back
         </button>
       </div>

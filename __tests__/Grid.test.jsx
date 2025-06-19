@@ -13,5 +13,5 @@ test('renders nine cells and highlights active', () => {
   expect(container.firstChild.childNodes).toHaveLength(9);
   const cells = screen.getAllByRole('gridcell');
   const active = cells[2];
-  expect(active).toHaveClass('bg-blue-400');
+  expect(active).toHaveClass('bg-blue-500');
 });
