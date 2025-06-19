@@ -1,6 +1,11 @@
-// Records presses and computes accuracy at round end.
+// -----------------------------------------------------------------------------
+// Response Evaluator
+// ------------------
+// Given the generated trial sequence and the user's recorded responses, compute
+// hit counts and accuracy percentages for visual, auditory and dual matches.
 
 export function evaluateResponses({ trials, responses, n }) {
+  // Counts for hits and opportunities across the different task types
   let visualHits = 0;
   let audioHits = 0;
   let dualHits = 0;
@@ -15,6 +20,8 @@ export function evaluateResponses({ trials, responses, n }) {
     const currentTrial = t;
     const userResponse = responses.get(i) || { vis: false, aud: false };
 
+    // Determine whether this trial should be considered a visual and/or
+    // auditory match relative to the item N steps back
     const isVisualMatchScenario = currentTrial.position === nBackTrial.position;
     const isAuditoryMatchScenario = currentTrial.letter === nBackTrial.letter;
 
@@ -43,6 +50,7 @@ export function evaluateResponses({ trials, responses, n }) {
     }
   });
 
+  // Helper to convert hit counts to a percentage with one decimal point
   const pct = (hits, total) =>
     total > 0 ? Number(((hits / total) * 100).toFixed(1)) : 0; // Return 0 if no opportunities
 

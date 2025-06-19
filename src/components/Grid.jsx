@@ -1,6 +1,14 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 
+// -----------------------------------------------------------------------------
+// Visual 3x3 grid used during gameplay.  The `active` prop determines which
+// cell is highlighted for the current trial.  Optional flags trigger temporary
+// success or failure flash animations.
+
+// Mapping from grid cell index (0‑7) to row/column pairs used for accessibility
+// labelling.  The centre cell is omitted so the numbering matches the dual
+// N‑back conventions.
 const mapping = [
   { r: 1, c: 1 }, // 0 top‑left
   { r: 1, c: 2 }, // 1 top‑middle
@@ -12,8 +20,9 @@ const mapping = [
   { r: 2, c: 1 }, // 7 middle‑left
 ];
 
-export default function Grid({ active, showCorrectFlash, showIncorrectFlash }) { // Added showCorrectFlash and showIncorrectFlash to props
-  // active is index 0‑7 or null
+export default function Grid({ active, showCorrectFlash, showIncorrectFlash }) {
+  // `active` is an index 0‑7 representing the cell to highlight, or null when
+  // no cell should be lit.
   return (
     <div
       className={`grid grid-cols-3 grid-rows-3 gap-1 w-56 h-56 sm:w-72 sm:h-72 lg:w-96 lg:h-96 select-none border border-gray-300 ${
@@ -26,8 +35,11 @@ export default function Grid({ active, showCorrectFlash, showIncorrectFlash }) {
       aria-describedby="trial-counter-description"
     >
       {Array.from({ length: 9 }, (_, i) => {
-        if (i === 4) return <div key={i} className="" />; // centre empty
-        const cellIndex = i < 4 ? i : i - 1; // map 0‑7 to grid positions skipping centre
+        // Position 4 is the centre square which remains empty in the classic
+        // dual N‑back grid.
+        if (i === 4) return <div key={i} className="" />;
+        // Map 0‑7 to grid positions skipping the centre cell
+        const cellIndex = i < 4 ? i : i - 1;
         const isActive = cellIndex === active;
         const { r, c } = mapping[cellIndex];
 
