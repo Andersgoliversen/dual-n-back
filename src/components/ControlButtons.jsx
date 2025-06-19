@@ -26,7 +26,7 @@ export default function ControlButtons({ onVis, onAud, disabled, taskType, visSt
           className={`px-4 py-2 rounded-lg border shadow disabled:opacity-40 bg-blue-500 text-white hover:bg-blue-600 ${getHighlight(visState)}`}
           aria-label="visual match button"
         >
-          Visual (F)
+          Position (A)
         </button>
       )}
       {taskType !== 'position' && (

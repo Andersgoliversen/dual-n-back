@@ -76,12 +76,12 @@ export default function App() {
   };
 
   // ----- One time setup -----
-  // Preload audio assets and register global key handlers for F/L shortcuts.
+  // Preload audio assets and register global key handlers for A/L shortcuts.
   useEffect(() => {
     preloadAudio();
     const keyHandler = (e) => {
       const key = e.key.toLowerCase();
-      if (key === 'f') handleResponse('vis');
+      if (key === 'a') handleResponse('vis');
       if (key === 'l') handleResponse('aud');
     };
     document.addEventListener('keydown', keyHandler);
@@ -307,7 +307,7 @@ export default function App() {
           <p className="max-w-md text-gray-700">
             The goal is to match the visual position and the auditory letter from {N} trials ago.
             <br />
-            Press 'F' if the current position matches the position from {N} trials back.
+            Press 'A' if the current position matches the position from {N} trials back.
             <br />
             Press 'L' if the current letter matches the letter from {N} trials back.
           </p>
