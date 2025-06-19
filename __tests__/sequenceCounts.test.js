@@ -1,3 +1,4 @@
+/* eslint-env jest */
 import { generateSequence } from '../src/utils/generator.js';
 
 test('generator yields correct match counts', () => {

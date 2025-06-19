@@ -3,16 +3,13 @@ import PropTypes from 'prop-types';
 import Grid from './components/Grid.jsx';
 import ControlButtons from './components/ControlButtons.jsx';
 import StatusBar from './components/StatusBar.jsx';
+import SettingsPanel from './components/SettingsPanel.jsx';
 import { preloadAudio, playLetter } from './utils/audio.js';
 import { generateSequence } from './utils/generator.js';
 import { evaluateResponses } from './utils/evaluator.js';
 import Stats from './components/Stats.jsx';
 
-const N = 2;
-const FILLERS = N;
 const NUM_SCORABLE_TRIALS = 20;
-const TOTAL_TRIALS_IN_SEQUENCE = NUM_SCORABLE_TRIALS + FILLERS;
-const TRIAL_MS = 3000; // 3 s per stimulus
 
 const positionLabels = [
   "Top-Left", "Top-Middle", "Top-Right",
@@ -21,6 +18,11 @@ const positionLabels = [
 ];
 
 export default function App() {
+  const [settings, setSettings] = useState({ n: 2, interval: 3, task: 'dual' });
+  const N = settings.n;
+  const FILLERS = N;
+  const TRIAL_MS = settings.interval * 1000;
+  const TOTAL_TRIALS_IN_SEQUENCE = NUM_SCORABLE_TRIALS + FILLERS;
   const [gameState, setGameState] = useState('intro');
   const [sequence, setSequence] = useState([]);
   const [currentSequenceIndex, setCurrentSequenceIndex] = useState(0);
@@ -104,7 +106,9 @@ export default function App() {
       const currentTrialData = sequence[currentSequenceIndex];
       if (currentTrialData) {
         document.body.focus();
-        (async () => { await playLetter(currentTrialData.letter); })();
+        if (settings.task !== 'position') {
+          (async () => { await playLetter(currentTrialData.letter); })();
+        }
         // const isFiller = currentSequenceIndex < FILLERS; // This variable is no longer strictly needed for the announcer text
         const posLabel = positionLabels[currentTrialData.position] || `Position ${currentTrialData.position + 1}`;
         // Always announce position and letter for active trials
@@ -138,11 +142,12 @@ export default function App() {
     return () => {
         if (timer.current) clearTimeout(timer.current);
     }
-  }, [gameState, currentSequenceIndex, sequence]);
+  }, [gameState, currentSequenceIndex, sequence, TRIAL_MS, settings.task]);
 
   const handleResponse = useCallback(
     (type) => {
       if (gameState !== 'playing' || currentSequenceIndex < FILLERS || !sequence[currentSequenceIndex] || !sequence[currentSequenceIndex - N]) return;
+      if ((settings.task === 'position' && type === 'aud') || (settings.task === 'audio' && type === 'vis')) return;
 
       const currentTrial = sequence[currentSequenceIndex];
       const nBackTrial = sequence[currentSequenceIndex - N];
@@ -210,8 +215,9 @@ export default function App() {
 
   return (
     <main className="relative flex flex-col items-center justify-center min-h-screen p-4">
-      <div className="absolute top-4 left-4">
+      <div className="absolute top-4 left-4 space-x-4">
         <button className="text-sm underline" onClick={() => setGameState('stats')}>Stats</button>
+        <button className="text-sm underline" onClick={() => setGameState('settings')}>Settings</button>
       </div>
       <div className="absolute top-4 right-4 text-sm text-gray-600 font-medium">
         {N}-Back
@@ -238,7 +244,7 @@ export default function App() {
       {gameState === 'playing' && sequence[currentSequenceIndex] && (
         <>
           <Grid
-            active={sequence[currentSequenceIndex].position}
+            active={settings.task === 'audio' ? null : sequence[currentSequenceIndex].position}
             showCorrectFlash={showCorrectFlash}
             showIncorrectFlash={showIncorrectFlashAnimation}
           />
@@ -246,6 +252,7 @@ export default function App() {
             onVis={() => handleResponse('vis')}
             onAud={() => handleResponse('aud')}
             disabled={currentSequenceIndex < FILLERS || !timer.current}
+            taskType={settings.task}
           />
           <StatusBar
             trial={currentScorableTrialNum > NUM_SCORABLE_TRIALS ? NUM_SCORABLE_TRIALS : currentScorableTrialNum}
@@ -284,6 +291,13 @@ export default function App() {
       )}
 
       {gameState === 'stats' && <Stats onBack={() => setGameState('intro')} />}
+      {gameState === 'settings' && (
+        <SettingsPanel
+          settings={settings}
+          onChange={setSettings}
+          onClose={() => setGameState('intro')}
+        />
+      )}
     </main>
   );
 }

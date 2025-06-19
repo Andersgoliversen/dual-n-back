@@ -1,3 +1,4 @@
+/* eslint-env jest */
 import { evaluateResponses } from '../src/utils/evaluator.js';
 
 describe('evaluateResponses', () => {
