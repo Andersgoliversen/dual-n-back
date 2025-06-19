@@ -246,35 +246,38 @@ export default function App() {
   const currentScorableTrialNum = Math.max(0, currentSequenceIndex - FILLERS + 1);
 
   return (
-    <main className="relative flex flex-col items-center justify-center min-h-screen p-4">
-      <div className="absolute top-4 left-4 space-x-4">
-        <button className="text-sm underline" onClick={() => setGameState('stats')}>Stats</button>
-        <button className="text-sm underline" onClick={() => setGameState('settings')}>Settings</button>
-      </div>
-      <div className="absolute top-4 right-4 text-sm text-gray-600 font-medium">
-        {N}-Back
-      </div>
+    <main className="min-h-screen flex flex-col items-center justify-center p-4">
+      <header className="w-full max-w-3xl flex justify-between items-center mb-6">
+        <div className="flex space-x-4 text-sm">
+          <button className="underline" onClick={() => setGameState('stats')}>Stats</button>
+          <button className="underline" onClick={() => setGameState('settings')}>Settings</button>
+        </div>
+        <div className="text-sm font-semibold text-gray-700">{N}-Back</div>
+      </header>
       <div id="active-cell-announcer" className="visually-hidden" role="status" aria-live="polite"></div>
       <div id="game-state-announcer" className="visually-hidden" role="status" aria-live="assertive"></div>
 
       {gameState === 'intro' && (
-        <>
-          <h1 className="text-2xl mb-4">Dual N-Back</h1>
-          <p className="mb-4 text-center" style={{ maxWidth: '400px' }}>
+        <div className="flex flex-col items-center text-center space-y-4">
+          <h1 className="text-3xl font-semibold">Dual N-Back</h1>
+          <p className="max-w-md text-gray-700">
             The goal is to match the visual position and the auditory letter from {N} trials ago.
             <br />
             Press 'F' if the current position matches the position from {N} trials back.
             <br />
             Press 'L' if the current letter matches the letter from {N} trials back.
           </p>
-          <button className="px-6 py-3 rounded-lg border shadow" onClick={startGame}>
+          <button
+            className="px-6 py-3 rounded-lg bg-blue-500 text-white hover:bg-blue-600"
+            onClick={startGame}
+          >
             Start Game
           </button>
-        </>
+        </div>
       )}
 
       {gameState === 'playing' && sequence[currentSequenceIndex] && (
-        <>
+        <div className="flex flex-col items-center space-y-4">
           <Grid
             active={settings.task === 'audio' ? null : sequence[currentSequenceIndex].position}
             showCorrectFlash={showCorrectFlash}
@@ -289,39 +292,43 @@ export default function App() {
             audState={buttonHighlight.aud}
           />
           <StatusBar
-            trial={currentScorableTrialNum > NUM_SCORABLE_TRIALS ? NUM_SCORABLE_TRIALS : currentScorableTrialNum}
+            trial={
+              currentScorableTrialNum > NUM_SCORABLE_TRIALS
+                ? NUM_SCORABLE_TRIALS
+                : currentScorableTrialNum
+            }
             total={NUM_SCORABLE_TRIALS}
           />
-        </>
+        </div>
       )}
 
       {gameState === 'break' && (
-        <>
-          <p className="mb-4">Round complete.</p>
+        <div className="flex flex-col items-center space-y-4">
+          <p>Round complete.</p>
           <button
-            className="px-4 py-2 rounded-lg border shadow"
+            className="px-4 py-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600"
             onClick={handleContinueFromBreak}
           >
             Continue
           </button>
-        </>
+        </div>
       )}
 
       {gameState === 'complete' && results && (
-        <>
-          <h2 className="text-xl mb-4">Results</h2>
+        <div className="flex flex-col items-center space-y-4">
+          <h2 className="text-xl">Results</h2>
           <div className="space-y-2">
             <ResultRow label="Visual" data={results.visual} />
             <ResultRow label="Auditory" data={results.auditory} />
             <ResultRow label="Dual" data={results.dual} />
           </div>
           <button
-            className="mt-6 px-4 py-2 rounded-lg border shadow"
+            className="mt-4 px-4 py-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600"
             onClick={handlePlayAgain}
           >
             Play Again
           </button>
-        </>
+        </div>
       )}
 
       {gameState === 'stats' && <Stats onBack={() => setGameState('intro')} />}

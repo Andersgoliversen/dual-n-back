@@ -16,7 +16,7 @@ export default function Grid({ active, showCorrectFlash, showIncorrectFlash }) {
   // active is index 0‑7 or null
   return (
     <div
-      className={`grid grid-cols-3 grid-rows-3 gap-1 w-56 h-56 sm:w-72 sm:h-72 lg:w-96 lg:h-96 select-none border border-gray-400 ${
+      className={`grid grid-cols-3 grid-rows-3 gap-1 w-56 h-56 sm:w-72 sm:h-72 lg:w-96 lg:h-96 select-none border border-gray-300 ${
         showCorrectFlash ? 'flash-correct' : ''
       } ${
         showIncorrectFlash ? 'flash-incorrect' : ''
@@ -38,7 +38,7 @@ export default function Grid({ active, showCorrectFlash, showIncorrectFlash }) {
             aria-label={`row ${r} column ${c}`}
             aria-selected={isActive}
             className={`rounded-lg border aspect-square w-full h-full flex items-center justify-center transition-all duration-300 ${
-              isActive ? 'bg-blue-400' : 'bg-gray-200'
+              isActive ? 'bg-blue-500' : 'bg-gray-100'
             } ${showCorrectFlash && isActive ? 'ring-4 ring-yellow-400' : ''}`}
           />
         );
