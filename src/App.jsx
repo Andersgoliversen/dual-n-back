@@ -58,6 +58,10 @@ export default function App() {
   const [buttonHighlight, setButtonHighlight] = useState({ vis: null, aud: null });
   const buttonHighlightTimeouts = useRef({ vis: null, aud: null });
 
+  // Whether the optional "focus mode" is enabled. When true the UI hides
+  // non-essential elements so only the grid is visible during gameplay.
+  const [focusMode, setFocusMode] = useState(false);
+
   // Ensure a unique identifier exists for the user so progress can be tracked
   // locally. This only runs once on mount.
   useEffect(() => {
@@ -291,13 +295,35 @@ export default function App() {
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center p-4">
-      <header className="w-full max-w-3xl flex justify-between items-center mb-6">
-        <div className="flex space-x-4 text-sm">
-          <button className="underline" onClick={() => setGameState('stats')}>Stats</button>
-          <button className="underline" onClick={() => setGameState('settings')}>Settings</button>
-        </div>
-        <div className="text-sm font-semibold text-gray-700">{N}-Back</div>
-      </header>
+      {!focusMode && (
+        <header className="w-full max-w-3xl flex justify-between items-center mb-6">
+          <div className="flex space-x-4 text-sm">
+            <button className="underline" onClick={() => setGameState('stats')}>
+              Stats
+            </button>
+            <button className="underline" onClick={() => setGameState('settings')}>
+              Settings
+            </button>
+          </div>
+          <div className="flex items-center space-x-4">
+            <span className="text-sm font-semibold text-gray-700">{N}-Back</span>
+            <button
+              className="underline text-sm"
+              onClick={() => setFocusMode(true)}
+            >
+              Focus Mode
+            </button>
+          </div>
+        </header>
+      )}
+      {focusMode && (
+        <button
+          className="fixed top-2 right-2 text-sm underline px-2 py-1 bg-white bg-opacity-80 rounded"
+          onClick={() => setFocusMode(false)}
+        >
+          Exit Focus
+        </button>
+      )}
       <div id="active-cell-announcer" className="visually-hidden" role="status" aria-live="polite"></div>
       <div id="game-state-announcer" className="visually-hidden" role="status" aria-live="assertive"></div>
 
@@ -327,22 +353,26 @@ export default function App() {
             showCorrectFlash={showCorrectFlash}
             showIncorrectFlash={showIncorrectFlashAnimation}
           />
-          <ControlButtons
-            onVis={() => handleResponse('vis')}
-            onAud={() => handleResponse('aud')}
-            disabled={currentSequenceIndex < FILLERS || !timer.current}
-            taskType={settings.task}
-            visState={buttonHighlight.vis}
-            audState={buttonHighlight.aud}
-          />
-          <StatusBar
-            trial={
-              currentScorableTrialNum > NUM_SCORABLE_TRIALS
-                ? NUM_SCORABLE_TRIALS
-                : currentScorableTrialNum
-            }
-            total={NUM_SCORABLE_TRIALS}
-          />
+          {!focusMode && (
+            <ControlButtons
+              onVis={() => handleResponse('vis')}
+              onAud={() => handleResponse('aud')}
+              disabled={currentSequenceIndex < FILLERS || !timer.current}
+              taskType={settings.task}
+              visState={buttonHighlight.vis}
+              audState={buttonHighlight.aud}
+            />
+          )}
+          {!focusMode && (
+            <StatusBar
+              trial={
+                currentScorableTrialNum > NUM_SCORABLE_TRIALS
+                  ? NUM_SCORABLE_TRIALS
+                  : currentScorableTrialNum
+              }
+              total={NUM_SCORABLE_TRIALS}
+            />
+          )}
         </div>
       )}
 
