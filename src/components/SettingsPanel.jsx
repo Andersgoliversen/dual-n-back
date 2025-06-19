@@ -1,15 +1,23 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 
+// -----------------------------------------------------------------------------
+// Simple panel that allows the player to configure the initial N‑back level,
+// stimulus interval and whether the game runs in dual, audio only or position
+// only mode.
+
 export default function SettingsPanel({ settings, onChange, onClose }) {
+  // Convert numeric inputs to numbers before passing them up to the parent
   const handleNumberChange = (e) => {
     onChange({ ...settings, [e.target.name]: Number(e.target.value) });
   };
 
+  // Update the selected task type
   const handleSelectChange = (e) => {
     onChange({ ...settings, task: e.target.value });
   };
 
+  // Render a small form containing the configurable options
   return (
     <div className="p-4 space-y-3 max-w-sm">
       <h2 className="text-xl mb-2">Settings</h2>

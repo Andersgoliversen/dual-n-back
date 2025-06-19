@@ -1,5 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
+
+// -----------------------------------------------------------------------------
+// Displays a line chart of previous sessions using data stored in local
+// storage.  This gives the player insight into how their N‑back level and
+// accuracy have changed over time.
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -17,6 +22,7 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, T
 export default function Stats({ onBack }) {
   const [history, setHistory] = useState([]);
 
+  // Load saved sessions from local storage once on mount
   useEffect(() => {
     const stored = localStorage.getItem('dnb-history');
     if (stored) {
@@ -28,6 +34,7 @@ export default function Stats({ onBack }) {
     }
   }, []);
 
+  // Prepare datasets for Chart.js
   const labels = history.map((h) => new Date(h.date).toLocaleDateString());
   const data = {
     labels,

@@ -1,3 +1,7 @@
+// Core gameplay logic for the Dual N‑Back application lives in this component.
+// It orchestrates the state machine for the game, handles timing, manages
+// responses and renders the UI.  Many of the values here control the behaviour
+// of the game such as the N‑back level or the delay between stimuli.
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import PropTypes from 'prop-types';
 import Grid from './components/Grid.jsx';
@@ -9,8 +13,14 @@ import { generateSequence } from './utils/generator.js';
 import { evaluateResponses } from './utils/evaluator.js';
 import Stats from './components/Stats.jsx';
 
+// Number of trials that actually count towards the player's score.  Each round
+// includes some initial "filler" trials that allow the N‑back comparison to
+// work.
 const NUM_SCORABLE_TRIALS = 20;
 
+// Human friendly labels for each grid position used by screen readers and
+// announcements.  The index corresponds to the numeric position in the
+// sequence data.
 const positionLabels = [
   "Top-Left", "Top-Middle", "Top-Right",
   "Middle-Right", "Bottom-Right", "Bottom-Middle",
@@ -18,15 +28,27 @@ const positionLabels = [
 ];
 
 export default function App() {
+  // ---------- Gameplay configuration and runtime state ----------
+  // Settings are user configurable via the settings panel.
   const [settings, setSettings] = useState({ n: 2, interval: 3, task: 'dual' });
-  const N = settings.n;
-  const FILLERS = N;
-  const TRIAL_MS = settings.interval * 1000;
+  const N = settings.n;                        // Current N‑back level
+  const FILLERS = N;                           // Number of non‑scorable filler trials
+  const TRIAL_MS = settings.interval * 1000;   // Delay between each stimulus
   const TOTAL_TRIALS_IN_SEQUENCE = NUM_SCORABLE_TRIALS + FILLERS;
+
+  // The overall finite state machine for the game (intro -> playing -> break -> complete)
   const [gameState, setGameState] = useState('intro');
+
+  // Generated sequence of positions/letters for this round
   const [sequence, setSequence] = useState([]);
+
+  // Index of the currently shown trial within the sequence
   const [currentSequenceIndex, setCurrentSequenceIndex] = useState(0);
+
+  // Map of user responses keyed by trial index
   const [responses, setResponses] = useState(new Map());
+
+  // Various refs used for timers and unlocked audio context
   const timer = useRef(null);
   const unlocked = useRef(false);
   const [showCorrectFlash, setShowCorrectFlash] = useState(false); // For correct response flash
@@ -36,13 +58,16 @@ export default function App() {
   const [buttonHighlight, setButtonHighlight] = useState({ vis: null, aud: null });
   const buttonHighlightTimeouts = useRef({ vis: null, aud: null });
 
-  // Initialize user profile
+  // Ensure a unique identifier exists for the user so progress can be tracked
+  // locally. This only runs once on mount.
   useEffect(() => {
     if (!localStorage.getItem('dnb-user-id')) {
       localStorage.setItem('dnb-user-id', crypto.randomUUID());
     }
   }, []);
 
+  // Helper used to update the hidden aria-live regions that announce changes to
+  // assistive technologies.
   const updateAnnouncer = (id, text) => {
     const el = document.getElementById(id);
     if (el) {
@@ -50,9 +75,9 @@ export default function App() {
     }
   };
 
-  // Main useEffect cleanup
+  // ----- One time setup -----
+  // Preload audio assets and register global key handlers for F/L shortcuts.
   useEffect(() => {
-    // This effect is primarily for preloading and global key listeners
     preloadAudio();
     const keyHandler = (e) => {
       const key = e.key.toLowerCase();
@@ -61,7 +86,7 @@ export default function App() {
     };
     document.addEventListener('keydown', keyHandler);
 
-    // Cleanup function for this effect
+    // Clean up event listeners and any running timers when unmounting.
     return () => {
       document.removeEventListener('keydown', keyHandler);
       // Clear any pending timeouts when App unmounts or before this effect re-runs (though it has empty deps)
@@ -95,6 +120,8 @@ export default function App() {
     if (buttonHighlightTimeouts.current.aud) clearTimeout(buttonHighlightTimeouts.current.aud);
   };
 
+  // Visually highlight the response buttons when a correct/incorrect/missed
+  // response occurs to provide immediate feedback to the player.
   const flashButton = (type, state) => {
     setButtonHighlight(prev => ({ ...prev, [type]: state }));
     if (buttonHighlightTimeouts.current[type]) clearTimeout(buttonHighlightTimeouts.current[type]);
@@ -103,13 +130,18 @@ export default function App() {
     }, 300);
   };
 
-  // Game state and current trial progression effect
+  // ---------------------------------------------------------------------------
+  // Main gameplay loop
+  // This effect advances the sequence and plays audio/visual cues.  It also
+  // handles end-of-round logic and sets up the next timer tick.
   useEffect(() => {
     if (gameState === 'playing') {
-      setShowIncorrectFlashAnimation(false); // Reset incorrect flash
-      if (incorrectFlashTimeoutRef.current) clearTimeout(incorrectFlashTimeoutRef.current); // Clear pending incorrect flash timeout
+      // Clear any leftover feedback from the previous trial
+      setShowIncorrectFlashAnimation(false);
+      if (incorrectFlashTimeoutRef.current) clearTimeout(incorrectFlashTimeoutRef.current);
 
       if (currentSequenceIndex > FILLERS) {
+        // Highlight misses from the previous trial if the user failed to respond
         const prevIndex = currentSequenceIndex - 1;
         const prevTrial = sequence[prevIndex];
         const nBackPrev = sequence[prevIndex - N];
@@ -124,11 +156,12 @@ export default function App() {
         }
       }
 
+      // If we've reached the end of the sequence move to the break state.
       if (currentSequenceIndex >= TOTAL_TRIALS_IN_SEQUENCE) {
         setGameState('break');
         updateAnnouncer('game-state-announcer', 'Round complete. Press Continue.');
         updateAnnouncer('active-cell-announcer', '');
-        return; // Return here to prevent setting new timer
+        return; // Prevent scheduling another timer
       }
 
       const currentTrialData = sequence[currentSequenceIndex];
@@ -172,6 +205,8 @@ export default function App() {
     }
   }, [gameState, currentSequenceIndex, sequence, TRIAL_MS, settings.task, responses]);
 
+  // Handle a user response (either visual or auditory).  This performs the
+  // correctness check, triggers feedback and records the response.
   const handleResponse = useCallback(
     (type) => {
       if (gameState !== 'playing' || currentSequenceIndex < FILLERS || !sequence[currentSequenceIndex] || !sequence[currentSequenceIndex - N]) return;
@@ -199,8 +234,7 @@ export default function App() {
         }, 150); // Flash duration
         flashButton(type === 'vis' ? 'vis' : 'aud', 'correct');
       } else {
-        // If the response was not correct, set the appropriate incorrect press state
-        // Trigger incorrect flash animation
+        // Wrong key or incorrect guess – flash red and play error tone
         setShowIncorrectFlashAnimation(true);
         if (incorrectFlashTimeoutRef.current) clearTimeout(incorrectFlashTimeoutRef.current);
         incorrectFlashTimeoutRef.current = setTimeout(() => {
@@ -221,6 +255,8 @@ export default function App() {
     [gameState, currentSequenceIndex, sequence, flashButton]
   );
 
+  // Persist the results of a completed round to local storage.  This allows the
+  // Stats screen to show historical progress for the current browser profile.
   const saveSession = (results) => {
     const history = JSON.parse(localStorage.getItem('dnb-history') || '[]');
     history.push({
@@ -231,6 +267,8 @@ export default function App() {
     localStorage.setItem('dnb-history', JSON.stringify(history));
   };
 
+  // Called when the player clicks "Continue" after a round.  Evaluates the
+  // responses, stores them and transitions to the results screen.
   const handleContinueFromBreak = () => {
     const r = evaluateResponses({ trials: sequence, responses, n: N });
     saveSession(r);
@@ -238,11 +276,17 @@ export default function App() {
     updateAnnouncer('game-state-announcer', 'Results displayed. Press Play Again to restart.');
   };
 
+  // Reset the game back to the intro screen so another round can be started.
   const handlePlayAgain = () => {
     setGameState('intro');
   };
 
+  // Re-compute the aggregate results when the round is complete so that the
+  // Results screen can display hits and accuracy numbers.
   const results = gameState === 'complete' ? evaluateResponses({ trials: sequence, responses, n: N }) : null;
+
+  // This value is used to drive the status bar.  It ignores the initial filler
+  // trials so that "Trial 1" is the first scorable trial.
   const currentScorableTrialNum = Math.max(0, currentSequenceIndex - FILLERS + 1);
 
   return (

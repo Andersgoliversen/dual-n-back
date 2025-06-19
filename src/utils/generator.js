@@ -1,7 +1,12 @@
-// Generates a 20‑trial sequence with the required match counts using a deterministic strategy (Strategy 4.1).
-// Parameters: n (N‑back level) → default 2.
+// -----------------------------------------------------------------------------
+// Sequence Generator
+// ------------------
+// Creates a sequence of trials with a roughly balanced number of visual,
+// auditory and dual matches.  The logic is deterministic so tests can rely on
+// the same distribution for a given seed.
 
-const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min; // Assumed correct
+// Helper for generating a random integer between min and max inclusive
+const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
 const LETTERS_ARRAY = ['C', 'H', 'K', 'L', 'Q', 'R', 'S', 'T'];
 const NUM_POSITIONS = 8; // 0-7 grid positions
@@ -13,8 +18,9 @@ function shuffle(array) {
   }
 }
 
-// Simplified _getRandomVal (Strategy 4.1)
-function _getRandomVal(valueSet, excludeVal) { // excludeVal is no longer optional for this specific strategy
+// Internal helper used to pick a random value from a set while optionally
+// excluding a specific previous value.  Retries a few times to avoid repeats.
+function _getRandomVal(valueSet, excludeVal) {
   if (!valueSet || valueSet.length === 0) {
     throw new Error("Cannot select from empty or undefined set.");
   }
@@ -49,24 +55,32 @@ function _getRandomVal(valueSet, excludeVal) { // excludeVal is no longer option
   return selectedVal; // Return the last picked one, even if it's same as excludeVal.
 }
 
-function getRandomLetter(excludeLetter = null) { // Keep null default for initial random fillers
-  if (excludeLetter === null) { // For initial random assignment without exclusion
+// Return a random letter from the predefined set, ensuring it is different from
+// `excludeLetter` when provided.  Used for both filler and scorable trials.
+function getRandomLetter(excludeLetter = null) {
+  if (excludeLetter === null) {
     return LETTERS_ARRAY[randomInt(0, LETTERS_ARRAY.length - 1)];
   }
   return _getRandomVal(LETTERS_ARRAY, excludeLetter);
 }
 
-function getRandomPosition(excludePosition = -1) { // Keep default for initial random fillers
-  const positionsArray = Array.from({length: NUM_POSITIONS}, (_, k) => k);
-  if (excludePosition === -1) { // For initial random assignment without exclusion
-      return positionsArray[randomInt(0, positionsArray.length - 1)];
+// Same as above but for grid positions (0‑7).  When excludePosition is -1 a
+// completely random position is returned.
+function getRandomPosition(excludePosition = -1) {
+  const positionsArray = Array.from({ length: NUM_POSITIONS }, (_, k) => k);
+  if (excludePosition === -1) {
+    return positionsArray[randomInt(0, positionsArray.length - 1)];
   }
   return _getRandomVal(positionsArray, excludePosition);
 }
 
 export function generateSequence({ n: N_LEVEL = 2 } = {}) {
+  // Construct a full sequence for a single round.  The first N trials are
+  // fillers so that an N‑back comparison can be made.  Subsequent trials are
+  // created according to the desired distribution of match types.
   const NUM_SCORABLE_TRIALS = 20;
   const TOTAL_TRIALS = NUM_SCORABLE_TRIALS + N_LEVEL;
+  // Desired counts of each match type within the scorable portion of the round
   const TARGET_DUAL = 2;
   const TARGET_VISUAL_ONLY = 4;
   const TARGET_AUDITORY_ONLY = 4;
@@ -93,6 +107,8 @@ export function generateSequence({ n: N_LEVEL = 2 } = {}) {
   ];
   shuffle(types);
 
+  // Generate each scorable trial by looking back N positions and deciding which
+  // attributes should match.
   for (let i = N_LEVEL; i < TOTAL_TRIALS; i++) {
     const prev = sequence[i - N_LEVEL];
     const type = types[i - N_LEVEL];
