@@ -57,6 +57,8 @@ export default function App() {
   const incorrectFlashTimeoutRef = useRef(null);
   const [buttonHighlight, setButtonHighlight] = useState({ vis: null, aud: null });
   const buttonHighlightTimeouts = useRef({ vis: null, aud: null });
+  // Controls visibility of the share links shown on the results screen
+  const [showShareOptions, setShowShareOptions] = useState(false);
 
   // Whether the optional "focus mode" is enabled. When true the UI hides
   // non-essential elements so only the grid is visible during gameplay.
@@ -285,6 +287,19 @@ export default function App() {
     setGameState('intro');
   };
 
+  // Toggle showing share options or trigger Web Share when supported
+  const handleShare = () => {
+    const message = `I just reached N-Back level ${N} on this Dual N-Back game! #dualnback`;
+    const url = window.location.href;
+    if (navigator.share) {
+      // Use native sharing when available
+      navigator.share({ text: message, url }).catch(() => {});
+    } else {
+      // Fallback displays buttons for specific platforms
+      setShowShareOptions((s) => !s);
+    }
+  };
+
   // Re-compute the aggregate results when the round is complete so that the
   // Results screen can display hits and accuracy numbers.
   const results = gameState === 'complete' ? evaluateResponses({ trials: sequence, responses, n: N }) : null;
@@ -391,17 +406,53 @@ export default function App() {
       {gameState === 'complete' && results && (
         <div className="flex flex-col items-center space-y-4">
           <h2 className="text-xl">Results</h2>
+          <p className="text-lg">N-Back Level: {N}</p>
+          <p className="text-lg font-semibold">Score: {results.dual.pct}%</p>
           <div className="space-y-2">
             <ResultRow label="Visual" data={results.visual} />
             <ResultRow label="Auditory" data={results.auditory} />
             <ResultRow label="Dual" data={results.dual} />
           </div>
-          <button
-            className="mt-4 px-4 py-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600"
-            onClick={handlePlayAgain}
-          >
-            Play Again
-          </button>
+          <div className="flex gap-2 mt-4">
+            <button
+              className="px-4 py-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600"
+              onClick={handlePlayAgain}
+            >
+              Play Again
+            </button>
+            <button
+              className="px-4 py-2 rounded-lg bg-green-500 text-white hover:bg-green-600"
+              onClick={handleShare}
+            >
+              Share
+            </button>
+          </div>
+          {showShareOptions && (
+            <div className="flex gap-2">
+              <a
+                href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(
+                  `I just reached N-Back level ${N} on this Dual N-Back game! #dualnback`
+                )}&url=${encodeURIComponent(window.location.href)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline text-blue-500"
+              >
+                Twitter/X
+              </a>
+              <a
+                href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(
+                  window.location.href
+                )}&quote=${encodeURIComponent(
+                  `I just reached N-Back level ${N} on this Dual N-Back game! #dualnback`
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline text-blue-700"
+              >
+                Facebook
+              </a>
+            </div>
+          )}
         </div>
       )}
 
