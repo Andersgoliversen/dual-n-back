@@ -5,10 +5,10 @@ const audioMap = new Map();
 
 export function preloadAudio() {
   LETTERS.forEach((l) => {
-    const a = new Audio(`/sounds/${l}.mp3`); // -14 LUFS @44.1 kHz provided externally
+    const a = new Audio(`${import.meta.env.BASE_URL}sounds/${l}.mp3`); // -14 LUFS @44.1 kHz provided externally
     a.preload = 'auto';
     a.addEventListener('error', () => {
-      console.warn(`Missing audio file: /sounds/${l}.mp3`);
+      console.warn(`Missing audio file: ${import.meta.env.BASE_URL}sounds/${l}.mp3`);
     });
     audioMap.set(l, a);
   });
