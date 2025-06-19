@@ -4,7 +4,7 @@ import Grid from './components/Grid.jsx';
 import ControlButtons from './components/ControlButtons.jsx';
 import StatusBar from './components/StatusBar.jsx';
 import SettingsPanel from './components/SettingsPanel.jsx';
-import { preloadAudio, playLetter } from './utils/audio.js';
+import { preloadAudio, playLetter, playFeedback } from './utils/audio.js';
 import { generateSequence } from './utils/generator.js';
 import { evaluateResponses } from './utils/evaluator.js';
 import Stats from './components/Stats.jsx';
@@ -33,6 +33,8 @@ export default function App() {
   const flashTimeoutRef = useRef(null); // Ref for the flash timeout
   const [showIncorrectFlashAnimation, setShowIncorrectFlashAnimation] = useState(false);
   const incorrectFlashTimeoutRef = useRef(null);
+  const [buttonHighlight, setButtonHighlight] = useState({ vis: null, aud: null });
+  const buttonHighlightTimeouts = useRef({ vis: null, aud: null });
 
   // Initialize user profile
   useEffect(() => {
@@ -88,6 +90,17 @@ export default function App() {
     updateAnnouncer('game-state-announcer', 'Game started.');
     setShowCorrectFlash(false); // Ensure flash is off at game start
     if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current); // Clear any lingering flash
+    setButtonHighlight({ vis: null, aud: null });
+    if (buttonHighlightTimeouts.current.vis) clearTimeout(buttonHighlightTimeouts.current.vis);
+    if (buttonHighlightTimeouts.current.aud) clearTimeout(buttonHighlightTimeouts.current.aud);
+  };
+
+  const flashButton = (type, state) => {
+    setButtonHighlight(prev => ({ ...prev, [type]: state }));
+    if (buttonHighlightTimeouts.current[type]) clearTimeout(buttonHighlightTimeouts.current[type]);
+    buttonHighlightTimeouts.current[type] = setTimeout(() => {
+      setButtonHighlight(prev => ({ ...prev, [type]: null }));
+    }, 300);
   };
 
   // Game state and current trial progression effect
@@ -95,6 +108,21 @@ export default function App() {
     if (gameState === 'playing') {
       setShowIncorrectFlashAnimation(false); // Reset incorrect flash
       if (incorrectFlashTimeoutRef.current) clearTimeout(incorrectFlashTimeoutRef.current); // Clear pending incorrect flash timeout
+
+      if (currentSequenceIndex > FILLERS) {
+        const prevIndex = currentSequenceIndex - 1;
+        const prevTrial = sequence[prevIndex];
+        const nBackPrev = sequence[prevIndex - N];
+        if (prevTrial && nBackPrev) {
+          const prevResp = responses.get(prevIndex) || { vis: false, aud: false };
+          if (prevTrial.position === nBackPrev.position && !prevResp.vis) {
+            flashButton('vis', 'miss');
+          }
+          if (prevTrial.letter === nBackPrev.letter && !prevResp.aud) {
+            flashButton('aud', 'miss');
+          }
+        }
+      }
 
       if (currentSequenceIndex >= TOTAL_TRIALS_IN_SEQUENCE) {
         setGameState('break');
@@ -142,7 +170,7 @@ export default function App() {
     return () => {
         if (timer.current) clearTimeout(timer.current);
     }
-  }, [gameState, currentSequenceIndex, sequence, TRIAL_MS, settings.task]);
+  }, [gameState, currentSequenceIndex, sequence, TRIAL_MS, settings.task, responses]);
 
   const handleResponse = useCallback(
     (type) => {
@@ -169,6 +197,7 @@ export default function App() {
         flashTimeoutRef.current = setTimeout(() => {
           setShowCorrectFlash(false);
         }, 150); // Flash duration
+        flashButton(type === 'vis' ? 'vis' : 'aud', 'correct');
       } else {
         // If the response was not correct, set the appropriate incorrect press state
         // Trigger incorrect flash animation
@@ -177,7 +206,10 @@ export default function App() {
         incorrectFlashTimeoutRef.current = setTimeout(() => {
           setShowIncorrectFlashAnimation(false);
         }, 300); // Flash duration for incorrect press
+        flashButton(type === 'vis' ? 'vis' : 'aud', 'incorrect');
       }
+
+      (async () => { await playFeedback(); })();
 
       setResponses((prev) => {
         const r = { ...(prev.get(currentSequenceIndex) || { vis: false, aud: false }) };
@@ -186,7 +218,7 @@ export default function App() {
         return new Map(prev).set(currentSequenceIndex, r);
       });
     },
-    [gameState, currentSequenceIndex, sequence]
+    [gameState, currentSequenceIndex, sequence, flashButton]
   );
 
   const saveSession = (results) => {
@@ -253,6 +285,8 @@ export default function App() {
             onAud={() => handleResponse('aud')}
             disabled={currentSequenceIndex < FILLERS || !timer.current}
             taskType={settings.task}
+            visState={buttonHighlight.vis}
+            audState={buttonHighlight.aud}
           />
           <StatusBar
             trial={currentScorableTrialNum > NUM_SCORABLE_TRIALS ? NUM_SCORABLE_TRIALS : currentScorableTrialNum}
