@@ -444,9 +444,12 @@ export default function App() {
             />
             <span className="ml-2">Adaptive Difficulty (auto-adjust N each round)</span>
           </label>
+          {/*
+            Focus is managed via a useEffect hook when the intro state
+            is active, so autoFocus is avoided for accessibility reasons.
+          */}
           <button
             ref={startButtonRef}
-            autoFocus
             className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded"
             onClick={startGame}
           >

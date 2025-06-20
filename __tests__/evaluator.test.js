@@ -236,17 +236,7 @@ describe('evaluateResponses', () => {
     });
 
     test('should correctly evaluate with N=0 (no scorable trials)', () => {
-        const trials = [
-          { index: 0, position: 1, letter: 'A' },
-          { index: 1, position: 1, letter: 'A' }, // Potential match but N=0 means no n-back
-        ];
-        const responses = new Map([[1, { vis: true, aud: true }]]);
         const n = 0;
-        const expected = {
-          visual: { hits: 0, total: 0, pct: 0 },
-          auditory: { hits: 0, total: 0, pct: 0 },
-          dual: { hits: 0, total: 0, pct: 0 },
-        };
         // N=0 means all trials are non-scorable as i is never < n
         // The loop `trials.forEach((t, i) => { if (i < n) return;` will always return for n=0
         // Let's rethink this. If n=0, does it mean every trial is compared to itself?
@@ -262,16 +252,6 @@ describe('evaluateResponses', () => {
         // isAuditoryMatchScenario = currentTrial.letter === nBackTrial.letter (i.e. trials[i].letter === trials[i].letter) -> always true
         // So every trial is a dual opportunity.
         // Let's re-evaluate the expected for N=0.
-        const expectedN0 = {
-            visual: { hits: 1, total: 1, pct: 100 }, // Trial 0 is skipped (i < n is 0 < 0 false)
-                                                   // Trial 1: nBackTrial = trials[1-0] = trials[1]
-                                                   // visualMatchOpportunities = 1 (for trial 1)
-                                                   // visualHits = 1 (for trial 1, userResponse.vis is true)
-            auditory: { hits: 1, total: 1, pct: 100 },// audioMatchOpportunities = 1 (for trial 1)
-                                                    // audioHits = 1 (for trial 1, userResponse.aud is true)
-            dual: { hits: 1, total: 1, pct: 100 },    // dualMatchOpportunities = 1 (for trial 1)
-                                                    // dualHits = 1 (userResponse.vis && userResponse.aud is true)
-        };
         // The loop starts with i=0. if (0 < 0) is false. So trial 0 is processed.
         // nBackTrial = trials[0-0] = trials[0].
         // For trial 0: visMatch=true, audMatch=true. visOpp++, audOpp++. visHit (if resp), audHit (if resp). dualOpp++. dualHit (if resp).

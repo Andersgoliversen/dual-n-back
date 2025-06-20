@@ -37,6 +37,15 @@ export default [
     },
   },
   {
+    // Enable Jest globals for test files so ESLint recognizes test functions
+    files: ["__tests__/**/*.{js,jsx}"],
+    languageOptions: {
+      globals: {
+        ...globals.jest,
+      },
+    },
+  },
+  {
     ignores: ["dist/", "node_modules/"],
   }
 ];
