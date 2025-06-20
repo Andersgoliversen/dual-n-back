@@ -139,6 +139,17 @@ export default function App() {
     if (buttonHighlightTimeouts.current.aud) clearTimeout(buttonHighlightTimeouts.current.aud);
   };
 
+  const handlePause = () => {
+    if (timer.current) clearTimeout(timer.current);
+    setGameState('paused');
+    updateAnnouncer('game-state-announcer', 'Game paused.');
+  };
+
+  const handleResume = () => {
+    setGameState('playing');
+    updateAnnouncer('game-state-announcer', 'Game resumed.');
+  };
+
   // Automatically focus the Start button whenever the intro screen is shown
   useEffect(() => {
     if (gameState === 'intro' && startButtonRef.current) {
@@ -207,10 +218,12 @@ export default function App() {
       // Clear previous timer before setting a new one
       if (timer.current) clearTimeout(timer.current);
       timer.current = setTimeout(() => {
-        setCurrentSequenceIndex(c => c + 1);
+        setCurrentSequenceIndex((c) => c + 1);
       }, TRIAL_MS);
 
       // No return () => clearTimeout(timer.current) here, moved to main useEffect cleanup or handle in else block
+    } else if (gameState === 'paused') {
+      if (timer.current) clearTimeout(timer.current);
     } else { // Not 'playing' state
       updateAnnouncer('active-cell-announcer', '');
       if (gameState === 'intro') {
@@ -442,18 +455,23 @@ export default function App() {
         </div>
       )}
 
-      {gameState === 'playing' && sequence[currentSequenceIndex] && (
-        <div className="flex flex-col items-center space-y-4">
+      {(gameState === 'playing' || gameState === 'paused') && sequence[currentSequenceIndex] && (
+        <div className="flex flex-col items-center space-y-4 relative">
           <Grid
             active={settings.task === 'audio' ? null : sequence[currentSequenceIndex].position}
             showCorrectFlash={showCorrectFlash}
             showIncorrectFlash={showIncorrectFlashAnimation}
           />
+          {gameState === 'paused' && (
+            <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center text-xl font-semibold">
+              Paused
+            </div>
+          )}
           {!focusMode && (
             <ControlButtons
               onVis={() => handleResponse('vis')}
               onAud={() => handleResponse('aud')}
-              disabled={currentSequenceIndex < FILLERS || !timer.current}
+              disabled={currentSequenceIndex < FILLERS || !timer.current || gameState === 'paused'}
               taskType={settings.task}
               visState={buttonHighlight.vis}
               audState={buttonHighlight.aud}
@@ -469,6 +487,12 @@ export default function App() {
               total={NUM_SCORABLE_TRIALS}
             />
           )}
+          <button
+            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded"
+            onClick={gameState === 'playing' ? handlePause : handleResume}
+          >
+            {gameState === 'playing' ? 'Pause' : 'Resume'}
+          </button>
         </div>
       )}
 
