@@ -37,6 +37,7 @@ export default function App() {
     adaptive: true,
   });
   const N = settings.n;                        // Current N‑back level
+  const adaptive = settings.adaptive;          // Whether adaptive difficulty is enabled
   const FILLERS = N;                           // Number of non‑scorable filler trials
   const TRIAL_MS = settings.interval * 1000;   // Delay between each stimulus
   const TOTAL_TRIALS_IN_SEQUENCE = NUM_SCORABLE_TRIALS + FILLERS;
@@ -305,8 +306,9 @@ export default function App() {
   // Reset the game back to the intro screen so another round can be started.
   const handlePlayAgain = () => {
     // Adjust the N-back level for the next round based on the
-    // previous session's visual and auditory accuracy.
-    if (lastResults) {
+    // previous session's visual and auditory accuracy when adaptive
+    // difficulty is enabled.
+    if (adaptive && lastResults) {
       let next = N;
       if (lastResults.visual.pct > 90 && lastResults.auditory.pct > 90) {
         next = N + 1;
