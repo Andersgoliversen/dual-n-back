@@ -71,6 +71,7 @@ SettingsPanel.propTypes = {
     n: PropTypes.number.isRequired,
     interval: PropTypes.number.isRequired,
     task: PropTypes.string.isRequired,
+    adaptive: PropTypes.bool.isRequired,
   }).isRequired,
   onChange: PropTypes.func.isRequired,
   onClose: PropTypes.func.isRequired,
