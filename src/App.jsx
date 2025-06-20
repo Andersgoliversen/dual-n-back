@@ -61,6 +61,8 @@ export default function App() {
   const incorrectFlashTimeoutRef = useRef(null);
   const [buttonHighlight, setButtonHighlight] = useState({ vis: null, aud: null });
   const buttonHighlightTimeouts = useRef({ vis: null, aud: null });
+  // Ref for the start button so it can be focused when the intro screen appears
+  const startButtonRef = useRef(null);
   // Controls visibility of the share links shown on the results screen
   const [showShareOptions, setShowShareOptions] = useState(false);
 
@@ -130,6 +132,13 @@ export default function App() {
     if (buttonHighlightTimeouts.current.vis) clearTimeout(buttonHighlightTimeouts.current.vis);
     if (buttonHighlightTimeouts.current.aud) clearTimeout(buttonHighlightTimeouts.current.aud);
   };
+
+  // Automatically focus the Start button whenever the intro screen is shown
+  useEffect(() => {
+    if (gameState === 'intro' && startButtonRef.current) {
+      startButtonRef.current.focus();
+    }
+  }, [gameState]);
 
   // Visually highlight the response buttons when a correct/incorrect/missed
   // response occurs to provide immediate feedback to the player.
@@ -371,15 +380,23 @@ export default function App() {
       {gameState === 'intro' && (
         <div className="flex flex-col items-center text-center space-y-4">
           <h1 className="text-3xl font-semibold">Dual N-Back</h1>
-          <p className="max-w-md text-gray-700">
-            The goal is to match the visual position and the auditory letter from {N} trials ago.
-            <br />
-            Press 'A' if the current position matches the position from {N} trials back.
-            <br />
-            Press 'L' if the current letter matches the letter from {N} trials back.
-          </p>
+          <div className="mb-4 text-center max-w-md text-sm text-gray-800">
+            <p className="mb-2">How to Play:</p>
+            <p>You will see a square flash in the grid and hear a letter each turn.</p>
+            <p>
+              If the position is the same as it was {N} turns ago, press
+              <kbd className="font-semibold px-1">A</kbd>.
+            </p>
+            <p>
+              If the letter is the same as it was {N} turns ago, press
+              <kbd className="font-semibold px-1">L</kbd>.
+            </p>
+            <p>If both match, press both keys.</p>
+          </div>
           <button
-            className="px-6 py-3 rounded-lg bg-blue-500 text-white hover:bg-blue-600"
+            ref={startButtonRef}
+            autoFocus
+            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded"
             onClick={startGame}
           >
             Start Game
