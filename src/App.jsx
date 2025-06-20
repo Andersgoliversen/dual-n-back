@@ -351,7 +351,7 @@ export default function App() {
   const currentScorableTrialNum = Math.max(0, currentSequenceIndex - FILLERS + 1);
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center p-4">
+    <main className="min-h-screen flex flex-col items-center justify-center p-4 bg-white text-gray-900 font-sans">
       {!focusMode && (
         <header className="w-full max-w-3xl flex justify-between items-center mb-6">
           <div className="flex space-x-4 text-sm">
@@ -476,7 +476,7 @@ export default function App() {
         <div className="flex flex-col items-center space-y-4">
           <p>Round complete.</p>
           <button
-            className="px-4 py-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600"
+            className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors duration-150"
             onClick={handleContinueFromBreak}
           >
             Continue
@@ -496,7 +496,7 @@ export default function App() {
           </div>
           <div className="flex gap-2 mt-4">
             <button
-              className="px-4 py-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600"
+              className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors duration-150"
               onClick={handlePlayAgain}
             >
               Play Again
