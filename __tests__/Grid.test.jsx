@@ -3,15 +3,15 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import Grid from '../src/components/Grid.jsx';
 
-test('tailwind classes apply to Grid', () => {
+test('basic classes apply to Grid', () => {
   const { container } = render(<Grid active={3} />);
-  expect(container.firstChild).toHaveClass('grid');
+  expect(container.firstChild).toHaveClass('border');
 });
 
-test('renders nine cells and highlights active', () => {
-  const { container } = render(<Grid active={2} />);
-  expect(container.firstChild.childNodes).toHaveLength(9);
+test('renders eight cells and highlights active', () => {
+  render(<Grid active={2} />);
   const cells = screen.getAllByRole('gridcell');
+  expect(cells).toHaveLength(8);
   const active = cells[2];
-  expect(active).toHaveClass('bg-blue-600');
+  expect(active.getAttribute('fill')).toBe('#2563eb');
 });
