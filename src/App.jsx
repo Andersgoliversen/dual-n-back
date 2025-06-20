@@ -393,6 +393,26 @@ export default function App() {
             </p>
             <p>If both match, press both keys.</p>
           </div>
+          <label
+            htmlFor="n-select"
+            className="mb-4 flex flex-col items-center text-sm text-gray-800"
+          >
+            <span className="mb-1">N-Back Level:</span>
+            <select
+              id="n-select"
+              value={settings.n}
+              onChange={(e) =>
+                setSettings((s) => ({ ...s, n: Number(e.target.value) }))
+              }
+              className="border border-gray-300 rounded px-2 py-1 text-gray-800"
+            >
+              {Array.from({ length: 10 }, (_, i) => (
+                <option key={i + 1} value={i + 1}>
+                  {i + 1}-Back
+                </option>
+              ))}
+            </select>
+          </label>
           <button
             ref={startButtonRef}
             autoFocus
