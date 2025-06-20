@@ -15,11 +15,11 @@
 }
 
 .flash-correct {
-  background-color: #9AE6B4; /* A light green, adjust as needed */
-  /* Add transition if desired, but for a quick flash, direct change is often fine */
+  background-color: rgba(16, 185, 129, 0.3); /* teal-400 with opacity */
 }
 
 .flash-incorrect {
+  background-color: rgba(239, 68, 68, 0.3); /* red-500 with opacity */
   animation: incorrect-flash-animation 0.3s ease-out;
 }
 

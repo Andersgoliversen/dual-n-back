@@ -23,7 +23,7 @@ export default function ControlButtons({ onVis, onAud, disabled, taskType, visSt
         <button
           onClick={onVis}
           disabled={disabled}
-          className={`px-4 py-2 rounded-lg border shadow disabled:opacity-40 bg-blue-500 text-white hover:bg-blue-600 ${getHighlight(visState)}`}
+          className={`px-4 py-2 rounded-lg border shadow disabled:opacity-40 bg-blue-600 text-white hover:bg-blue-700 transition-colors duration-150 ${getHighlight(visState)}`}
           aria-label="visual match button"
         >
           Position (A)
@@ -33,7 +33,7 @@ export default function ControlButtons({ onVis, onAud, disabled, taskType, visSt
         <button
           onClick={onAud}
           disabled={disabled}
-          className={`px-4 py-2 rounded-lg border shadow disabled:opacity-40 bg-blue-500 text-white hover:bg-blue-600 ${getHighlight(audState)}`}
+          className={`px-4 py-2 rounded-lg border shadow disabled:opacity-40 bg-blue-600 text-white hover:bg-blue-700 transition-colors duration-150 ${getHighlight(audState)}`}
           aria-label="auditory match button"
         >
           Audio (L)
