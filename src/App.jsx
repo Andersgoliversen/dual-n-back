@@ -30,7 +30,12 @@ const positionLabels = [
 export default function App() {
   // ---------- Gameplay configuration and runtime state ----------
   // Settings are user configurable via the settings panel.
-  const [settings, setSettings] = useState({ n: 2, interval: 3, task: 'dual' });
+  const [settings, setSettings] = useState({
+    n: 2,
+    interval: 3,
+    task: 'dual',
+    adaptive: true,
+  });
   const N = settings.n;                        // Current N‑back level
   const FILLERS = N;                           // Number of non‑scorable filler trials
   const TRIAL_MS = settings.interval * 1000;   // Delay between each stimulus
@@ -412,6 +417,17 @@ export default function App() {
                 </option>
               ))}
             </select>
+          </label>
+          <label className="inline-flex items-center mt-2 text-sm text-gray-800">
+            <input
+              type="checkbox"
+              className="form-checkbox h-4 w-4 text-blue-600"
+              checked={settings.adaptive}
+              onChange={(e) =>
+                setSettings((s) => ({ ...s, adaptive: e.target.checked }))
+              }
+            />
+            <span className="ml-2">Adaptive Difficulty (auto-adjust N each round)</span>
           </label>
           <button
             ref={startButtonRef}
