@@ -104,21 +104,6 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const keyHandler = (e) => {
-      const tag = e.target?.tagName?.toLowerCase();
-      if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
-      const key = e.key.toLowerCase();
-      if (key === 'a') handleResponse('vis');
-      if (key === 'l') handleResponse('aud');
-    };
-    document.addEventListener('keydown', keyHandler);
-
-    return () => {
-      document.removeEventListener('keydown', keyHandler);
-    };
-  }, [handleResponse]);
-
-  useEffect(() => {
     responsesRef.current = responses;
   }, [responses]);
 
@@ -201,6 +186,71 @@ export default function App() {
       setButtonHighlight((prev) => ({ ...prev, [type]: null }));
     }, 300);
   }, []);
+
+  // Handle a user response (either visual or auditory).  This performs the
+  // correctness check, triggers feedback and records the response.
+  const handleResponse = useCallback(
+    (type) => {
+      if (gameState !== 'playing' || currentSequenceIndex < FILLERS || !sequence[currentSequenceIndex] || !sequence[currentSequenceIndex - N]) return;
+      if ((settings.task === 'position' && type === 'aud') || (settings.task === 'audio' && type === 'vis')) return;
+
+      const currentTrial = sequence[currentSequenceIndex];
+      const nBackTrial = sequence[currentSequenceIndex - N];
+      let isCorrect = false;
+
+      if (type === 'vis') {
+        if (currentTrial.position === nBackTrial.position) {
+          isCorrect = true;
+        }
+      } else if (type === 'aud') {
+        if (currentTrial.letter === nBackTrial.letter) {
+          isCorrect = true;
+        }
+      }
+
+      if (isCorrect) {
+        setShowCorrectFlash(true);
+        if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
+        flashTimeoutRef.current = setTimeout(() => {
+          setShowCorrectFlash(false);
+        }, 150); // Flash duration
+        flashButton(type === 'vis' ? 'vis' : 'aud', 'correct');
+      } else {
+        // Wrong key or incorrect guess – flash red and play error tone
+        setShowIncorrectFlashAnimation(true);
+        if (incorrectFlashTimeoutRef.current) clearTimeout(incorrectFlashTimeoutRef.current);
+        incorrectFlashTimeoutRef.current = setTimeout(() => {
+          setShowIncorrectFlashAnimation(false);
+        }, 300); // Flash duration for incorrect press
+        flashButton(type === 'vis' ? 'vis' : 'aud', 'incorrect');
+      }
+
+      (async () => { await playFeedback(); })();
+
+      setResponses((prev) => {
+        const r = { ...(prev.get(currentSequenceIndex) || { vis: false, aud: false }) };
+        if (type === 'vis') r.vis = true;
+        if (type === 'aud') r.aud = true;
+        return new Map(prev).set(currentSequenceIndex, r);
+      });
+    },
+    [gameState, currentSequenceIndex, sequence, N, FILLERS, settings.task, flashButton]
+  );
+
+  useEffect(() => {
+    const keyHandler = (e) => {
+      const tag = e.target?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+      const key = e.key.toLowerCase();
+      if (key === 'a') handleResponse('vis');
+      if (key === 'l') handleResponse('aud');
+    };
+    document.addEventListener('keydown', keyHandler);
+
+    return () => {
+      document.removeEventListener('keydown', keyHandler);
+    };
+  }, [handleResponse]);
 
   // ---------------------------------------------------------------------------
   // Main gameplay loop
@@ -288,56 +338,6 @@ export default function App() {
     TOTAL_TRIALS_IN_SEQUENCE,
     flashButton,
   ]);
-
-  // Handle a user response (either visual or auditory).  This performs the
-  // correctness check, triggers feedback and records the response.
-  const handleResponse = useCallback(
-    (type) => {
-      if (gameState !== 'playing' || currentSequenceIndex < FILLERS || !sequence[currentSequenceIndex] || !sequence[currentSequenceIndex - N]) return;
-      if ((settings.task === 'position' && type === 'aud') || (settings.task === 'audio' && type === 'vis')) return;
-
-      const currentTrial = sequence[currentSequenceIndex];
-      const nBackTrial = sequence[currentSequenceIndex - N];
-      let isCorrect = false;
-
-      if (type === 'vis') {
-        if (currentTrial.position === nBackTrial.position) {
-          isCorrect = true;
-        }
-      } else if (type === 'aud') {
-        if (currentTrial.letter === nBackTrial.letter) {
-          isCorrect = true;
-        }
-      }
-
-      if (isCorrect) {
-        setShowCorrectFlash(true);
-        if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
-        flashTimeoutRef.current = setTimeout(() => {
-          setShowCorrectFlash(false);
-        }, 150); // Flash duration
-        flashButton(type === 'vis' ? 'vis' : 'aud', 'correct');
-      } else {
-        // Wrong key or incorrect guess – flash red and play error tone
-        setShowIncorrectFlashAnimation(true);
-        if (incorrectFlashTimeoutRef.current) clearTimeout(incorrectFlashTimeoutRef.current);
-        incorrectFlashTimeoutRef.current = setTimeout(() => {
-          setShowIncorrectFlashAnimation(false);
-        }, 300); // Flash duration for incorrect press
-        flashButton(type === 'vis' ? 'vis' : 'aud', 'incorrect');
-      }
-
-      (async () => { await playFeedback(); })();
-
-      setResponses((prev) => {
-        const r = { ...(prev.get(currentSequenceIndex) || { vis: false, aud: false }) };
-        if (type === 'vis') r.vis = true;
-        if (type === 'aud') r.aud = true;
-        return new Map(prev).set(currentSequenceIndex, r);
-      });
-    },
-    [gameState, currentSequenceIndex, sequence, N, FILLERS, settings.task, flashButton]
-  );
 
   // Persist the results of a completed round to local storage.  This allows the
   // Stats screen to show historical progress for the current browser profile.
