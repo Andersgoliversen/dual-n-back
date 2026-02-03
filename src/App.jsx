@@ -441,6 +441,10 @@ export default function App() {
       : settings.task === 'position'
         ? 'Position Only'
         : 'Audio Only';
+  const activePosition = settings.task === 'audio'
+    ? null
+    : sequence[currentSequenceIndex]?.position ?? null;
+  const isGameActive = gameState === 'playing' || gameState === 'paused';
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100 font-sans">
@@ -560,11 +564,11 @@ export default function App() {
             </div>
           )}
 
-          {(gameState === 'playing' || gameState === 'paused') && sequence[currentSequenceIndex] && (
+          {isGameActive && (
             <div className="flex flex-col items-center space-y-5 relative">
               <div className="flex flex-col items-center gap-3">
                 <Grid
-                  active={settings.task === 'audio' ? null : sequence[currentSequenceIndex].position}
+                  active={activePosition}
                   showCorrectFlash={showCorrectFlash}
                   showIncorrectFlash={showIncorrectFlashAnimation}
                 />
