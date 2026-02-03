@@ -79,15 +79,36 @@ export default function Stats({ onBack }) {
   };
 
   return (
-    <div className="max-w-lg mx-auto p-4">
-      <h2 className="text-xl mb-4 text-center">Your Progress</h2>
+    <div className="max-w-2xl mx-auto p-4 text-slate-200">
+      <h2 className="text-2xl mb-4 text-center text-white">Your Progress</h2>
       {history.length === 0 ? (
-        <p className="text-center mb-4">No data yet.</p>
+        <p className="text-center mb-6 text-slate-400">No data yet.</p>
       ) : (
-        <Line data={data} options={options} />
+        <div className="space-y-6">
+          <Line data={data} options={options} />
+          <div className="rounded-xl border border-slate-700 bg-slate-900/60 p-4">
+            <p className="text-sm uppercase tracking-widest text-slate-400">Recent Sessions</p>
+            <div className="mt-3 grid gap-2 text-sm">
+              {history
+                .slice(-5)
+                .reverse()
+                .map((session) => (
+                  <div
+                    key={session.date}
+                    className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2 last:border-b-0 last:pb-0"
+                  >
+                    <span>{new Date(session.date).toLocaleDateString()}</span>
+                    <span className="text-slate-400">Mode: {session.task || 'dual'}</span>
+                    <span className="font-semibold text-white">N {session.level}</span>
+                    <span className="text-emerald-300">{session.accuracy}%</span>
+                  </div>
+                ))}
+            </div>
+          </div>
+        </div>
       )}
-      <div className="mt-4 text-center">
-        <button className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors duration-150" onClick={onBack}>
+      <div className="mt-6 text-center">
+        <button className="px-6 py-3 rounded-full bg-blue-600 text-white hover:bg-blue-500 transition-colors duration-150" onClick={onBack}>
           Back
         </button>
       </div>

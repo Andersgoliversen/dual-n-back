@@ -44,6 +44,7 @@ export default function App() {
 
   // The overall finite state machine for the game (intro -> playing -> break -> complete)
   const [gameState, setGameState] = useState('intro');
+  const [countdown, setCountdown] = useState(null);
 
   // Generated sequence of positions/letters for this round
   const [sequence, setSequence] = useState([]);
@@ -53,6 +54,7 @@ export default function App() {
 
   // Map of user responses keyed by trial index
   const [responses, setResponses] = useState(new Map());
+  const responsesRef = useRef(responses);
 
   // Stores results from the most recently completed round so the
   // next round's difficulty can be adjusted.
@@ -76,6 +78,8 @@ export default function App() {
   // non-essential elements so only the grid is visible during gameplay.
   const [focusMode, setFocusMode] = useState(false);
 
+  const countdownTimer = useRef(null);
+
   // Ensure a unique identifier exists for the user so progress can be tracked
   // locally. This only runs once on mount.
   useEffect(() => {
@@ -97,22 +101,35 @@ export default function App() {
   // Preload audio assets and register global key handlers for A/L shortcuts.
   useEffect(() => {
     preloadAudio();
+  }, []);
+
+  useEffect(() => {
     const keyHandler = (e) => {
+      const tag = e.target?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
       const key = e.key.toLowerCase();
       if (key === 'a') handleResponse('vis');
       if (key === 'l') handleResponse('aud');
     };
     document.addEventListener('keydown', keyHandler);
 
-    // Clean up event listeners and any running timers when unmounting.
     return () => {
       document.removeEventListener('keydown', keyHandler);
-      // Clear any pending timeouts when App unmounts or before this effect re-runs (though it has empty deps)
-      if (timer.current) clearTimeout(timer.current); // Already present for game timer
-      if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current); // Cleanup for flash
-      if (incorrectFlashTimeoutRef.current) clearTimeout(incorrectFlashTimeoutRef.current); // Cleanup for incorrect flash
     };
-  }, []); // Empty dependency array means this runs once on mount
+  }, [handleResponse]);
+
+  useEffect(() => {
+    responsesRef.current = responses;
+  }, [responses]);
+
+  useEffect(() => {
+    return () => {
+      if (timer.current) clearTimeout(timer.current);
+      if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current);
+      if (incorrectFlashTimeoutRef.current) clearTimeout(incorrectFlashTimeoutRef.current);
+      if (countdownTimer.current) clearTimeout(countdownTimer.current);
+    };
+  }, []);
 
   const unlockAudio = () => {
     if (unlocked.current) return;
@@ -130,8 +147,9 @@ export default function App() {
     setResponses(new Map());
     setLastResults(null); // Clear old results when a new round starts
     setCurrentSequenceIndex(0);
-    setGameState('playing');
-    updateAnnouncer('game-state-announcer', 'Game started.');
+    setCountdown(3);
+    setGameState('countdown');
+    updateAnnouncer('game-state-announcer', 'Get ready.');
     setShowCorrectFlash(false); // Ensure flash is off at game start
     if (flashTimeoutRef.current) clearTimeout(flashTimeoutRef.current); // Clear any lingering flash
     setButtonHighlight({ vis: null, aud: null });
@@ -157,15 +175,32 @@ export default function App() {
     }
   }, [gameState]);
 
+  useEffect(() => {
+    if (gameState !== 'countdown' || countdown === null) return;
+
+    if (countdown <= 0) {
+      setGameState('playing');
+      setCountdown(null);
+      updateAnnouncer('game-state-announcer', 'Game started.');
+      return;
+    }
+
+    updateAnnouncer('game-state-announcer', `Starting in ${countdown}...`);
+    if (countdownTimer.current) clearTimeout(countdownTimer.current);
+    countdownTimer.current = setTimeout(() => {
+      setCountdown((c) => (c === null ? null : c - 1));
+    }, 1000);
+  }, [gameState, countdown]);
+
   // Visually highlight the response buttons when a correct/incorrect/missed
   // response occurs to provide immediate feedback to the player.
-  const flashButton = (type, state) => {
-    setButtonHighlight(prev => ({ ...prev, [type]: state }));
+  const flashButton = useCallback((type, state) => {
+    setButtonHighlight((prev) => ({ ...prev, [type]: state }));
     if (buttonHighlightTimeouts.current[type]) clearTimeout(buttonHighlightTimeouts.current[type]);
     buttonHighlightTimeouts.current[type] = setTimeout(() => {
-      setButtonHighlight(prev => ({ ...prev, [type]: null }));
+      setButtonHighlight((prev) => ({ ...prev, [type]: null }));
     }, 300);
-  };
+  }, []);
 
   // ---------------------------------------------------------------------------
   // Main gameplay loop
@@ -183,11 +218,11 @@ export default function App() {
         const prevTrial = sequence[prevIndex];
         const nBackPrev = sequence[prevIndex - N];
         if (prevTrial && nBackPrev) {
-          const prevResp = responses.get(prevIndex) || { vis: false, aud: false };
-          if (prevTrial.position === nBackPrev.position && !prevResp.vis) {
+          const prevResp = responsesRef.current.get(prevIndex) || { vis: false, aud: false };
+          if (settings.task !== 'audio' && prevTrial.position === nBackPrev.position && !prevResp.vis) {
             flashButton('vis', 'miss');
           }
-          if (prevTrial.letter === nBackPrev.letter && !prevResp.aud) {
+          if (settings.task !== 'position' && prevTrial.letter === nBackPrev.letter && !prevResp.aud) {
             flashButton('aud', 'miss');
           }
         }
@@ -242,7 +277,17 @@ export default function App() {
     return () => {
         if (timer.current) clearTimeout(timer.current);
     }
-  }, [gameState, currentSequenceIndex, sequence, TRIAL_MS, settings.task, responses]);
+  }, [
+    gameState,
+    currentSequenceIndex,
+    sequence,
+    TRIAL_MS,
+    settings.task,
+    N,
+    FILLERS,
+    TOTAL_TRIALS_IN_SEQUENCE,
+    flashButton,
+  ]);
 
   // Handle a user response (either visual or auditory).  This performs the
   // correctness check, triggers feedback and records the response.
@@ -291,17 +336,24 @@ export default function App() {
         return new Map(prev).set(currentSequenceIndex, r);
       });
     },
-    [gameState, currentSequenceIndex, sequence, flashButton]
+    [gameState, currentSequenceIndex, sequence, N, FILLERS, settings.task, flashButton]
   );
 
   // Persist the results of a completed round to local storage.  This allows the
   // Stats screen to show historical progress for the current browser profile.
   const saveSession = (results) => {
     const history = JSON.parse(localStorage.getItem('dnb-history') || '[]');
+    const accuracy =
+      settings.task === 'dual'
+        ? results.dual.pct
+        : settings.task === 'position'
+          ? results.visual.pct
+          : results.auditory.pct;
     history.push({
       date: new Date().toISOString(),
       level: N,
-      accuracy: results.dual.pct,
+      accuracy,
+      task: settings.task,
     });
     localStorage.setItem('dnb-history', JSON.stringify(history));
   };
@@ -309,7 +361,7 @@ export default function App() {
   // Called when the player clicks "Continue" after a round.  Evaluates the
   // responses, stores them and transitions to the results screen.
   const handleContinueFromBreak = () => {
-    const r = evaluateResponses({ trials: sequence, responses, n: N });
+    const r = evaluateResponses({ trials: sequence, responses, n: N, task: settings.task });
     saveSession(r);
     setLastResults(r); // Store results for adaptive difficulty
     setGameState('complete');
@@ -323,19 +375,33 @@ export default function App() {
     // difficulty is enabled.
     if (adaptive && lastResults) {
       let next = N;
-      if (lastResults.visual.pct > 90 && lastResults.auditory.pct > 90) {
-        next = N + 1;
-      } else if (
-        lastResults.visual.pct < 75 ||
-        lastResults.auditory.pct < 75
-      ) {
-        next = Math.max(1, N - 1);
+      const visualPct = lastResults.visual.pct;
+      const auditoryPct = lastResults.auditory.pct;
+      if (settings.task === 'dual') {
+        if (visualPct > 90 && auditoryPct > 90) {
+          next = N + 1;
+        } else if (visualPct < 75 || auditoryPct < 75) {
+          next = Math.max(1, N - 1);
+        }
+      } else if (settings.task === 'position') {
+        if (visualPct > 90) {
+          next = N + 1;
+        } else if (visualPct < 75) {
+          next = Math.max(1, N - 1);
+        }
+      } else {
+        if (auditoryPct > 90) {
+          next = N + 1;
+        } else if (auditoryPct < 75) {
+          next = Math.max(1, N - 1);
+        }
       }
       if (next !== N) {
         setSettings((s) => ({ ...s, n: next }));
       }
     }
     setGameState('intro');
+    setShowShareOptions(false);
   };
 
   // Toggle showing share options or trigger Web Share when supported
@@ -356,230 +422,289 @@ export default function App() {
   // Use stored results when available so changing the N-back level
   // after a round doesn't alter the displayed statistics.
   const results = gameState === 'complete'
-    ? lastResults || evaluateResponses({ trials: sequence, responses, n: N })
+    ? lastResults || evaluateResponses({ trials: sequence, responses, n: N, task: settings.task })
     : null;
 
   // This value is used to drive the status bar.  It ignores the initial filler
   // trials so that "Trial 1" is the first scorable trial.
   const currentScorableTrialNum = Math.max(0, currentSequenceIndex - FILLERS + 1);
+  const currentScore = results
+    ? settings.task === 'dual'
+      ? results.dual.pct
+      : settings.task === 'position'
+        ? results.visual.pct
+        : results.auditory.pct
+    : null;
+  const taskLabel =
+    settings.task === 'dual'
+      ? 'Dual'
+      : settings.task === 'position'
+        ? 'Position Only'
+        : 'Audio Only';
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center p-4 bg-white text-gray-900 font-sans">
-      {!focusMode && (
-        <header className="w-full max-w-3xl flex justify-between items-center mb-6">
-          <div className="flex space-x-4 text-sm">
-            <button className="underline" onClick={() => setGameState('stats')}>
-              Stats
-            </button>
-            <button className="underline" onClick={() => setGameState('settings')}>
-              Settings
-            </button>
-          </div>
-          <div className="flex items-center space-x-4">
-            <span className="text-sm font-semibold text-gray-700">{N}-Back</span>
-            <button
-              className="underline text-sm"
-              onClick={() => setFocusMode(true)}
-            >
-              Focus Mode
-            </button>
-          </div>
-        </header>
-      )}
-      {focusMode && (
-        <button
-          className="fixed top-2 right-2 text-sm underline px-2 py-1 bg-white bg-opacity-80 rounded"
-          onClick={() => setFocusMode(false)}
-        >
-          Exit Focus
-        </button>
-      )}
-      <div id="active-cell-announcer" className="visually-hidden" role="status" aria-live="polite"></div>
-      <div id="game-state-announcer" className="visually-hidden" role="status" aria-live="assertive"></div>
-
-      {gameState === 'intro' && (
-        <div className="flex flex-col items-center text-center space-y-4">
-          <h1 className="text-3xl font-semibold">Dual N-Back</h1>
-          <div className="mb-4 text-center max-w-md text-sm text-gray-800">
-            <p className="mb-2">How to Play:</p>
-            <p>You will see a square flash in the grid and hear a letter each turn.</p>
-            <p>
-              If the position is the same as it was {N} turns ago, press
-              <kbd className="font-semibold px-1">A</kbd>.
-            </p>
-            <p>
-              If the letter is the same as it was {N} turns ago, press
-              <kbd className="font-semibold px-1">L</kbd>.
-            </p>
-            <p>If both match, press both keys.</p>
-          </div>
-          <label
-            htmlFor="n-select"
-            className="mb-4 flex flex-col items-center text-sm text-gray-800"
-          >
-            <span className="mb-1">N-Back Level:</span>
-            <select
-              id="n-select"
-              value={settings.n}
-              onChange={(e) =>
-                setSettings((s) => ({ ...s, n: Number(e.target.value) }))
-              }
-              className="border border-gray-300 rounded px-2 py-1 text-gray-800"
-            >
-              {Array.from({ length: 10 }, (_, i) => (
-                <option key={i + 1} value={i + 1}>
-                  {i + 1}-Back
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="inline-flex items-center mt-2 text-sm text-gray-800">
-            <input
-              type="checkbox"
-              className="form-checkbox h-4 w-4 text-blue-600"
-              checked={settings.adaptive}
-              onChange={(e) =>
-                setSettings((s) => ({ ...s, adaptive: e.target.checked }))
-              }
-            />
-            <span className="ml-2">Adaptive Difficulty (auto-adjust N each round)</span>
-          </label>
-          {/*
-            Focus is managed via a useEffect hook when the intro state
-            is active, so autoFocus is avoided for accessibility reasons.
-          */}
+    <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100 font-sans">
+      <div className="w-full max-w-5xl mx-auto px-4 py-8 flex flex-col gap-6">
+        {!focusMode && (
+          <header className="w-full flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
+            <div>
+              <h1 className="text-3xl font-semibold">Dual N-Back</h1>
+              <p className="text-sm text-slate-300">
+                Train working memory with timed visual + audio matches.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3 text-sm text-slate-200">
+              <button
+                className="rounded-full border border-slate-700 px-4 py-2 hover:bg-slate-800"
+                onClick={() => setGameState('stats')}
+              >
+                Stats
+              </button>
+              <button
+                className="rounded-full border border-slate-700 px-4 py-2 hover:bg-slate-800"
+                onClick={() => setGameState('settings')}
+              >
+                Settings
+              </button>
+              <div className="flex items-center gap-2 rounded-full border border-slate-700 px-4 py-2">
+                <span className="text-slate-400">Level</span>
+                <span className="font-semibold text-white">{N}-Back</span>
+              </div>
+              <button
+                className="rounded-full border border-slate-700 px-4 py-2 hover:bg-slate-800"
+                onClick={() => setFocusMode(true)}
+              >
+                Focus Mode
+              </button>
+            </div>
+          </header>
+        )}
+        {focusMode && (
           <button
-            ref={startButtonRef}
-            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded"
-            onClick={startGame}
+            className="fixed top-3 right-3 text-sm rounded-full border border-slate-700 px-4 py-2 bg-slate-900/80 backdrop-blur hover:bg-slate-800"
+            onClick={() => setFocusMode(false)}
           >
-            Start Game
+            Exit Focus
           </button>
-        </div>
-      )}
+        )}
+        <div id="active-cell-announcer" className="visually-hidden" role="status" aria-live="polite"></div>
+        <div id="game-state-announcer" className="visually-hidden" role="status" aria-live="assertive"></div>
 
-      {(gameState === 'playing' || gameState === 'paused') && sequence[currentSequenceIndex] && (
-        <div className="flex flex-col items-center space-y-4 relative">
-          <Grid
-            active={settings.task === 'audio' ? null : sequence[currentSequenceIndex].position}
-            showCorrectFlash={showCorrectFlash}
-            showIncorrectFlash={showIncorrectFlashAnimation}
-          />
-          {gameState === 'paused' && (
-            <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center text-xl font-semibold">
-              Paused
+        <section className={`${focusMode ? '' : 'bg-slate-900/80 border border-slate-700 rounded-2xl shadow-xl'} p-6 sm:p-8`}>
+          {gameState === 'intro' && (
+            <div className="flex flex-col items-center text-center space-y-5">
+              <div className="max-w-2xl space-y-3 text-sm text-slate-200">
+                <p className="text-base font-semibold text-white">How to play</p>
+                <p>You will see a square flash in the grid and hear a letter each turn.</p>
+                <p>
+                  If the position is the same as it was {N} turns ago, press
+                  <kbd className="mx-1 rounded bg-slate-800 px-2 py-1 font-semibold text-white">A</kbd>.
+                </p>
+                <p>
+                  If the letter is the same as it was {N} turns ago, press
+                  <kbd className="mx-1 rounded bg-slate-800 px-2 py-1 font-semibold text-white">L</kbd>.
+                </p>
+                <p>If both match, press both keys before the next stimulus.</p>
+              </div>
+              <div className="flex flex-col items-center gap-4">
+                <label htmlFor="n-select" className="text-sm text-slate-200">
+                  <span className="mr-2">N-Back Level:</span>
+                  <select
+                    id="n-select"
+                    value={settings.n}
+                    onChange={(e) =>
+                      setSettings((s) => ({ ...s, n: Number(e.target.value) }))
+                    }
+                    className="rounded border border-slate-700 bg-slate-900 px-3 py-1 text-white"
+                  >
+                    {Array.from({ length: 10 }, (_, i) => (
+                      <option key={i + 1} value={i + 1}>
+                        {i + 1}-Back
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="inline-flex items-center text-sm text-slate-200">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-slate-700 text-blue-500"
+                    checked={settings.adaptive}
+                    onChange={(e) =>
+                      setSettings((s) => ({ ...s, adaptive: e.target.checked }))
+                    }
+                  />
+                  <span className="ml-2">Adaptive Difficulty (auto-adjust N each round)</span>
+                </label>
+              </div>
+              {/*
+                Focus is managed via a useEffect hook when the intro state
+                is active, so autoFocus is avoided for accessibility reasons.
+              */}
+              <button
+                ref={startButtonRef}
+                className="px-6 py-3 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-semibold shadow-lg shadow-blue-500/20"
+                onClick={startGame}
+              >
+                Start Game
+              </button>
             </div>
           )}
-          {!focusMode && (
-            <ControlButtons
-              onVis={() => handleResponse('vis')}
-              onAud={() => handleResponse('aud')}
-              disabled={currentSequenceIndex < FILLERS || !timer.current || gameState === 'paused'}
-              taskType={settings.task}
-              visState={buttonHighlight.vis}
-              audState={buttonHighlight.aud}
-            />
-          )}
-          {!focusMode && (
-            <StatusBar
-              trial={
-                currentScorableTrialNum > NUM_SCORABLE_TRIALS
-                  ? NUM_SCORABLE_TRIALS
-                  : currentScorableTrialNum
-              }
-              total={NUM_SCORABLE_TRIALS}
-            />
-          )}
-          <button
-            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded"
-            onClick={gameState === 'playing' ? handlePause : handleResume}
-          >
-            {gameState === 'playing' ? 'Pause' : 'Resume'}
-          </button>
-        </div>
-      )}
-
-      {gameState === 'break' && (
-        <div className="flex flex-col items-center space-y-4">
-          <p>Round complete.</p>
-          <button
-            className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors duration-150"
-            onClick={handleContinueFromBreak}
-          >
-            Continue
-          </button>
-        </div>
-      )}
-
-      {gameState === 'complete' && results && (
-        <div className="flex flex-col items-center space-y-4">
-          <h2 className="text-xl">Results</h2>
-          <p className="text-lg">N-Back Level: {N}</p>
-          <p className="text-lg font-semibold">Score: {results.dual.pct}%</p>
-          <div className="space-y-2">
-            <ResultRow label="Visual" data={results.visual} />
-            <ResultRow label="Auditory" data={results.auditory} />
-            <ResultRow label="Dual" data={results.dual} />
-          </div>
-          <div className="flex gap-2 mt-4">
-            <button
-              className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors duration-150"
-              onClick={handlePlayAgain}
-            >
-              Play Again
-            </button>
-            <button
-              className="px-4 py-2 rounded-lg bg-green-500 text-white hover:bg-green-600"
-              onClick={handleShare}
-            >
-              Share
-            </button>
-          </div>
-          {showShareOptions && (
-            <div className="flex gap-2">
-              <a
-                href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(
-                  `I just reached N-Back level ${N} on this Dual N-Back game! #dualnback`
-                )}&url=${encodeURIComponent(window.location.href)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline text-blue-500"
-              >
-                Twitter/X
-              </a>
-              <a
-                href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(
-                  window.location.href
-                )}&quote=${encodeURIComponent(
-                  `I just reached N-Back level ${N} on this Dual N-Back game! #dualnback`
-                )}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline text-blue-700"
-              >
-                Facebook
-              </a>
+          {gameState === 'countdown' && (
+            <div className="flex flex-col items-center text-center space-y-4">
+              <p className="text-sm uppercase tracking-widest text-slate-400">Get Ready</p>
+              <p className="text-6xl font-bold text-white">{countdown}</p>
+              <p className="text-sm text-slate-300">
+                Stay focused. Respond with <span className="font-semibold text-white">A</span> for position
+                and <span className="font-semibold text-white">L</span> for audio.
+              </p>
             </div>
           )}
-        </div>
-      )}
 
-      {gameState === 'stats' && <Stats onBack={() => setGameState('intro')} />}
-      {gameState === 'settings' && (
-        <SettingsPanel
-          settings={settings}
-          onChange={setSettings}
-          onClose={() => setGameState('intro')}
-        />
-      )}
+          {(gameState === 'playing' || gameState === 'paused') && sequence[currentSequenceIndex] && (
+            <div className="flex flex-col items-center space-y-5 relative">
+              <div className="flex flex-col items-center gap-3">
+                <Grid
+                  active={settings.task === 'audio' ? null : sequence[currentSequenceIndex].position}
+                  showCorrectFlash={showCorrectFlash}
+                  showIncorrectFlash={showIncorrectFlashAnimation}
+                />
+                {!focusMode && (
+                  <p className="text-sm text-slate-400">
+                    Respond before the next tone. Visual match: <span className="text-white">A</span> · Audio match:{' '}
+                    <span className="text-white">L</span>
+                  </p>
+                )}
+              </div>
+              {gameState === 'paused' && (
+                <div className="absolute inset-0 bg-slate-900/80 backdrop-blur flex items-center justify-center text-xl font-semibold rounded-xl">
+                  Paused
+                </div>
+              )}
+              {!focusMode && (
+                <ControlButtons
+                  onVis={() => handleResponse('vis')}
+                  onAud={() => handleResponse('aud')}
+                  disabled={currentSequenceIndex < FILLERS || !timer.current || gameState === 'paused'}
+                  taskType={settings.task}
+                  visState={buttonHighlight.vis}
+                  audState={buttonHighlight.aud}
+                />
+              )}
+              {!focusMode && (
+                <StatusBar
+                  trial={
+                    currentScorableTrialNum > NUM_SCORABLE_TRIALS
+                      ? NUM_SCORABLE_TRIALS
+                      : currentScorableTrialNum
+                  }
+                  total={NUM_SCORABLE_TRIALS}
+                />
+              )}
+              <button
+                className="px-6 py-3 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-semibold shadow-lg shadow-blue-500/20"
+                onClick={gameState === 'playing' ? handlePause : handleResume}
+              >
+                {gameState === 'playing' ? 'Pause' : 'Resume'}
+              </button>
+            </div>
+          )}
+
+          {gameState === 'break' && (
+            <div className="flex flex-col items-center space-y-4 text-center">
+              <p className="text-lg font-semibold text-white">Round complete.</p>
+              <p className="text-sm text-slate-300">Review your results and continue when ready.</p>
+              <button
+                className="px-6 py-3 rounded-full bg-blue-600 text-white hover:bg-blue-500 transition-colors duration-150"
+                onClick={handleContinueFromBreak}
+              >
+                Continue
+              </button>
+            </div>
+          )}
+
+          {gameState === 'complete' && results && (
+            <div className="flex flex-col items-center space-y-5 text-center">
+              <div>
+                <h2 className="text-2xl font-semibold text-white">Results</h2>
+                <p className="text-sm text-slate-300">Mode: {taskLabel}</p>
+              </div>
+              <div className="grid gap-3 text-sm text-slate-200">
+                <p>N-Back Level: <span className="font-semibold text-white">{N}</span></p>
+                <p>Score: <span className="text-2xl font-semibold text-white">{currentScore}%</span></p>
+              </div>
+              <div className="grid gap-2 text-sm">
+                <ResultRow label="Visual" data={results.visual} />
+                <ResultRow label="Auditory" data={results.auditory} />
+                <ResultRow label="Dual" data={results.dual} />
+              </div>
+              <div className="flex flex-wrap justify-center gap-3 mt-2">
+                <button
+                  className="px-6 py-3 rounded-full bg-blue-600 text-white hover:bg-blue-500 transition-colors duration-150"
+                  onClick={handlePlayAgain}
+                >
+                  Play Again
+                </button>
+                <button
+                  className="px-6 py-3 rounded-full bg-emerald-500 text-white hover:bg-emerald-400"
+                  onClick={handleShare}
+                >
+                  Share
+                </button>
+              </div>
+              {showShareOptions && (
+                <div className="flex flex-wrap justify-center gap-4 text-sm">
+                  <a
+                    href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(
+                      `I just reached N-Back level ${N} on this Dual N-Back game! #dualnback`
+                    )}&url=${encodeURIComponent(window.location.href)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline text-sky-400"
+                  >
+                    Twitter/X
+                  </a>
+                  <a
+                    href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(
+                      window.location.href
+                    )}&quote=${encodeURIComponent(
+                      `I just reached N-Back level ${N} on this Dual N-Back game! #dualnback`
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline text-blue-400"
+                  >
+                    Facebook
+                  </a>
+                </div>
+              )}
+            </div>
+          )}
+
+          {gameState === 'stats' && <Stats onBack={() => setGameState('intro')} />}
+          {gameState === 'settings' && (
+            <SettingsPanel
+              settings={settings}
+              onChange={setSettings}
+              onClose={() => setGameState('intro')}
+            />
+          )}
+        </section>
+      </div>
     </main>
   );
 }
 
 function ResultRow({ label, data }) {
+  if (!data.enabled) {
+    return (
+      <p className="text-slate-500">
+        {label}: <span className="italic">Not enabled</span>
+      </p>
+    );
+  }
   return (
-    <p>
-      {label}: {data.hits}/{data.total} ({data.pct}%)
+    <p className="text-slate-200">
+      {label}: <span className="text-white font-semibold">{data.hits}</span>/{data.total} ({data.pct}%)
     </p>
   );
 }
@@ -590,5 +715,6 @@ ResultRow.propTypes = {
     hits: PropTypes.number.isRequired,
     total: PropTypes.number.isRequired,
     pct: PropTypes.number.isRequired,
+    enabled: PropTypes.bool.isRequired,
   }).isRequired,
 };

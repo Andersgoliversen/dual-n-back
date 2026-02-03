@@ -4,7 +4,10 @@
 // Given the generated trial sequence and the user's recorded responses, compute
 // hit counts and accuracy percentages for visual, auditory and dual matches.
 
-export function evaluateResponses({ trials, responses, n }) {
+export function evaluateResponses({ trials, responses, n, task = 'dual' }) {
+  const enableVisual = task !== 'audio';
+  const enableAudio = task !== 'position';
+  const enableDual = task === 'dual';
   // Counts for hits and opportunities across the different task types
   let visualHits = 0;
   let audioHits = 0;
@@ -26,23 +29,23 @@ export function evaluateResponses({ trials, responses, n }) {
     const isAuditoryMatchScenario = currentTrial.letter === nBackTrial.letter;
 
     // Increment opportunity counts
-    if (isVisualMatchScenario) {
+    if (enableVisual && isVisualMatchScenario) {
       visualMatchOpportunities++;
     }
-    if (isAuditoryMatchScenario) {
+    if (enableAudio && isAuditoryMatchScenario) {
       audioMatchOpportunities++;
     }
 
     // Handle hits
-    if (isVisualMatchScenario && userResponse.vis) {
+    if (enableVisual && isVisualMatchScenario && userResponse.vis) {
       visualHits++;
     }
-    if (isAuditoryMatchScenario && userResponse.aud) {
+    if (enableAudio && isAuditoryMatchScenario && userResponse.aud) {
       audioHits++;
     }
 
     // Handle dual matches (these are a subset of individual visual/auditory matches)
-    if (isVisualMatchScenario && isAuditoryMatchScenario) {
+    if (enableDual && isVisualMatchScenario && isAuditoryMatchScenario) {
       dualMatchOpportunities++;
       if (userResponse.vis && userResponse.aud) {
         dualHits++;
@@ -55,8 +58,23 @@ export function evaluateResponses({ trials, responses, n }) {
     total > 0 ? Number(((hits / total) * 100).toFixed(1)) : 0; // Return 0 if no opportunities
 
   return {
-    visual: { hits: visualHits, total: visualMatchOpportunities, pct: pct(visualHits, visualMatchOpportunities) },
-    auditory: { hits: audioHits, total: audioMatchOpportunities, pct: pct(audioHits, audioMatchOpportunities) },
-    dual: { hits: dualHits, total: dualMatchOpportunities, pct: pct(dualHits, dualMatchOpportunities) },
+    visual: {
+      hits: visualHits,
+      total: visualMatchOpportunities,
+      pct: pct(visualHits, visualMatchOpportunities),
+      enabled: enableVisual,
+    },
+    auditory: {
+      hits: audioHits,
+      total: audioMatchOpportunities,
+      pct: pct(audioHits, audioMatchOpportunities),
+      enabled: enableAudio,
+    },
+    dual: {
+      hits: dualHits,
+      total: dualMatchOpportunities,
+      pct: pct(dualHits, dualMatchOpportunities),
+      enabled: enableDual,
+    },
   };
 }

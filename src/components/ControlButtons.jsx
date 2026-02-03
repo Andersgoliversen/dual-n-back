@@ -10,9 +10,9 @@ import PropTypes from 'prop-types';
 export default function ControlButtons({ onVis, onAud, disabled, taskType, visState, audState }) {
   // Map a response state to a Tailwind class for colouring the button.
   const getHighlight = (state) => {
-    if (state === 'correct') return 'bg-green-500 text-white';
-    if (state === 'incorrect') return 'bg-red-500 text-white';
-    if (state === 'miss') return 'bg-yellow-400 text-white';
+    if (state === 'correct') return 'bg-emerald-500 text-white shadow-emerald-500/40';
+    if (state === 'incorrect') return 'bg-rose-500 text-white shadow-rose-500/40';
+    if (state === 'miss') return 'bg-amber-400 text-white shadow-amber-400/40';
     return '';
   };
   // Render buttons conditionally based on the current task type.  Each is
@@ -23,7 +23,7 @@ export default function ControlButtons({ onVis, onAud, disabled, taskType, visSt
         <button
           onClick={onVis}
           disabled={disabled}
-          className={`px-4 py-2 rounded-lg border shadow disabled:opacity-40 bg-blue-600 text-white hover:bg-blue-700 transition-colors duration-150 ${getHighlight(visState)}`}
+          className={`px-5 py-2 rounded-full border border-slate-700 shadow disabled:opacity-40 bg-slate-800 text-white hover:bg-slate-700 transition-colors duration-150 ${getHighlight(visState)}`}
           aria-label="visual match button"
         >
           Position (A)
@@ -33,7 +33,7 @@ export default function ControlButtons({ onVis, onAud, disabled, taskType, visSt
         <button
           onClick={onAud}
           disabled={disabled}
-          className={`px-4 py-2 rounded-lg border shadow disabled:opacity-40 bg-blue-600 text-white hover:bg-blue-700 transition-colors duration-150 ${getHighlight(audState)}`}
+          className={`px-5 py-2 rounded-full border border-slate-700 shadow disabled:opacity-40 bg-slate-800 text-white hover:bg-slate-700 transition-colors duration-150 ${getHighlight(audState)}`}
           aria-label="auditory match button"
         >
           Audio (L)
