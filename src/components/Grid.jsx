@@ -25,7 +25,7 @@ export default function Grid({ active, showCorrectFlash, showIncorrectFlash }) {
   // no cell should be lit.
   return (
     <div
-      className={`grid grid-cols-3 grid-rows-3 gap-1 w-56 h-56 sm:w-72 sm:h-72 lg:w-96 lg:h-96 select-none border border-gray-400 ${
+      className={`grid grid-cols-3 grid-rows-3 gap-2 w-56 h-56 sm:w-72 sm:h-72 lg:w-96 lg:h-96 select-none border border-slate-700 rounded-2xl p-2 bg-slate-900/40 ${
         showCorrectFlash ? 'flash-correct' : ''
       } ${
         showIncorrectFlash ? 'flash-incorrect' : ''
@@ -49,9 +49,9 @@ export default function Grid({ active, showCorrectFlash, showIncorrectFlash }) {
             role="gridcell"
             aria-label={`row ${r} column ${c}`}
             aria-selected={isActive}
-            className={`rounded-lg border aspect-square w-full h-full flex items-center justify-center transition-all duration-300 ${
-              isActive ? 'bg-blue-600' : 'bg-gray-100'
-            } ${showCorrectFlash && isActive ? 'ring-4 ring-yellow-400' : ''}`}
+            className={`rounded-xl border border-slate-700 aspect-square w-full h-full flex items-center justify-center transition-all duration-300 ${
+              isActive ? 'bg-cyan-400 shadow-lg shadow-cyan-400/40' : 'bg-slate-800'
+            } ${showCorrectFlash && isActive ? 'ring-4 ring-yellow-300' : ''}`}
           />
         );
       })}

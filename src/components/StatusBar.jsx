@@ -12,10 +12,10 @@ export default function StatusBar({ trial, total }) {
   // progress updates.
   return (
     <div className="w-full max-w-xs mt-4" role="status" aria-live="polite" id="trial-counter-description">
-      <div className="h-2 bg-gray-200 rounded">
-        <div className="h-full bg-blue-600 rounded" style={{ width: `${pct}%` }} />
+      <div className="h-2 bg-slate-800 rounded-full">
+        <div className="h-full bg-cyan-400 rounded-full" style={{ width: `${pct}%` }} />
       </div>
-      <p className="text-center text-sm mt-2">Trial {trial}/{total}</p>
+      <p className="text-center text-sm mt-2 text-slate-300">Trial {trial}/{total}</p>
     </div>
   );
 }
